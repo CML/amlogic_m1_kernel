@@ -1,0 +1,14 @@
+#!/system/xbin/busybox sh
+
+##if  [ !  -d   /data/etc/   ];then
+##	busybox mkdir /data/etc
+##	busybox chmod 777 /data/etc/ -R
+##	##busybox echo 2 > /proc/driver/nastech
+##	busybox cp /system/etc/rotate.txt /data/etc/
+##fi
+
+if   [ !  -d   /data/data/eu.chainfire.cf3d   ];then
+	cd /data
+	busybox tar xvf /system/etc/cf.tar.bz
+fi
+

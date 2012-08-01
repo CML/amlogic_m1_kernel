@@ -1,0 +1,14 @@
+------------------------------------------------------
+- NVSBL Sirius Kernel for SuperOSR-ICS Project  
+-
+- Thanks to:
+- hillbeast, naobsd, psquare, Nvsbl, Gadmei, Amlogic
+------------------------------------------------------
+You can make uImage for root and recovery images.
+
+Defconfigs (copy it to .config before compile):
+-arch/arm/configs/sirius_defconfig boot.img
+-arch/arm/configs/sirius_recovery_defconfig uImage_recovery
+
+Sample of make with CodeSourcery:
+make uImage -j9 ARCH=arm CROSS_COMPILE=/home/cml/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-linux-gnueabi-
