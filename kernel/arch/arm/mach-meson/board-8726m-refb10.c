@@ -882,10 +882,10 @@ static int ts_get_irq_level(void)
 
 #ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
 u8 ts_config_data[] = {
-    0x30,0x06,0x05,0x04,0x28,0x02,0x14,0x60,0x10,0x3C,0xB0,
+    0x30,0x19,0x05,0x04,0x28,0x02,0x14,0x60,0x10,0x3C,0xB0,
     0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,
     0xE0,0x00,0x00,0x32,0x28,0x4D,0xC4,0x20,0x01,0x01,0x03,
-    0x50,0x3C,0x1E,0xB4,0x00,0x2B,0x27,0xFF,0xB4,0x00,0x50,
+    0x50,0x3C,0x1E,0xB4,0x00,0x2B,0x27,0x01,0xB4,0x00,0x50,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
 };
    
@@ -1190,7 +1190,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 6,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1572,12 +1572,12 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "cache",
 		.offset = 1088*SZ_1M,
-		.size = 896*SZ_1M,
+		.size = 256*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 1984*SZ_1M,
-		.size = 1856*SZ_1M,
+		.offset = 1344*SZ_1M,
+		.size = 1600*SZ_1M,
 	},
 	{
 		.name = "NFTL_Part",
@@ -1597,8 +1597,8 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
 			},
     	},
-		.T_REA = 20,
-		.T_RHOH = 25,
+			.T_REA = 20,
+			.T_RHOH = 15,
 	},
 {
 		.name = NAND_MULTI_NAME,
@@ -1612,8 +1612,8 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
 			},
     	},
-		.T_REA = 20,
-		.T_RHOH = 25,
+			.T_REA = 20,
+			.T_RHOH = 15,
 	}
 };
 

@@ -440,24 +440,25 @@ static int __init early_mem(char *p)
 		start = memparse(endp + 1, NULL);
 #ifdef CONFIG_ARCH_MESON
 	{
-		unsigned long bankstart;
-		bankstart = start;
-		/*64M-170M(approx.) is reserved for VIDEO MEMORY*/
+		/*64M-128M is reversed for VIDEO MEMORY*/
+		unsigned long vstart,vend;
 		if(	init_mach_mdesc &&
 			init_mach_mdesc->video_start>start &&
 			init_mach_mdesc->video_end>init_mach_mdesc->video_start)
 		{
-			unsigned long vstart, vend, vsize;
 			vstart=init_mach_mdesc->video_start;
 			vend=init_mach_mdesc->video_end;
-			vsize = size > (vstart - start) ? (vstart - start) : size;
-			/* 0M-64M */
-			arm_add_memory(bankstart, vstart - bankstart);
-			bankstart = PAGE_ALIGN(vend);
+			arm_add_memory(start, size>(vstart-start)?(vstart-start):size);
+			if(size>(vend-start))
+			{
+				arm_add_memory(vend+1,size-(vend-start+1));
+			}
 		}
-		/* 170-end or 512-end (ifdef CONFIG_AML_SUSPEND) */
-		if (bankstart < start + size)
-			arm_add_memory(bankstart, start + size - bankstart);
+		else
+		{
+			arm_add_memory(start, size);
+		}
+		
 	}
 #else
 		arm_add_memory(start, size);

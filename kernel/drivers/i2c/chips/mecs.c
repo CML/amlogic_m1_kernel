@@ -362,4 +362,3 @@ module_exit(ecompass_exit);
 MODULE_AUTHOR("Robbie Cao<hjcao@memsic.com>");
 MODULE_DESCRIPTION("MEMSIC eCompass Driver");
 MODULE_LICENSE("GPL");
-

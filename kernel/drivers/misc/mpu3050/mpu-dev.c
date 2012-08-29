@@ -69,26 +69,6 @@ struct mpu_private_data {
 static int pid;
 
 static struct i2c_client *this_client;
-int i2c_xfer(unsigned int addr,struct i2c_client *client)
-{
-    unsigned char cmd = 0x0;
-	
-	struct i2c_msg msgs[] = {
-	    {
-	        .addr = addr,
-	        .flags = 0,
-	        .len = 1,
-	        .buf = &cmd,
-	    }
-	};
-	
-	if(i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs)) < 0) {
-	    printk("%s: i2c transfer failed!\n", __FUNCTION__);
-		return -1;
-	}
-
-	return 0;
-}
 
 static int mpu_open(struct inode *inode, struct file *file)
 {
@@ -749,27 +729,22 @@ int mpu3050_probe(struct i2c_client *client,
 #endif
 
 		if (pdata->accel.get_slave_descr) {
-				mpu->mldl_cfg.accel =
-    			    pdata->accel.get_slave_descr();
-				dev_info(&this_client->adapter->dev,
-    				 "%s: +%s\n", MPU_NAME,
-    				mpu->mldl_cfg.accel->name);
+			mpu->mldl_cfg.accel =
+			    pdata->accel.get_slave_descr();
+			dev_info(&this_client->adapter->dev,
+				 "%s: +%s\n", MPU_NAME,
+				 mpu->mldl_cfg.accel->name);
 		} else {
 			dev_warn(&this_client->adapter->dev,
 				 "%s: No Accel Present\n", MPU_NAME);
 		}
 
 		if (pdata->compass.get_slave_descr) {
-            if(i2c_xfer(pdata->compass.address,this_client)<0){
-    			dev_warn(&this_client->adapter->dev,
-    				 "%s: No Compass Present\n", MPU_NAME);                
-            } else {  
-    			mpu->mldl_cfg.compass =
-    			    pdata->compass.get_slave_descr();
-    			dev_info(&this_client->adapter->dev,
-    				 "%s: +%s\n", MPU_NAME,
-    				 mpu->mldl_cfg.compass->name);
-		    }
+			mpu->mldl_cfg.compass =
+			    pdata->compass.get_slave_descr();
+			dev_info(&this_client->adapter->dev,
+				 "%s: +%s\n", MPU_NAME,
+				 mpu->mldl_cfg.compass->name);
 		} else {
 			dev_warn(&this_client->adapter->dev,
 				 "%s: No Compass Present\n", MPU_NAME);

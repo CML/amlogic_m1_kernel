@@ -629,7 +629,7 @@ static int aml_nftl_thread(void *arg)
 
 			mutex_unlock(&aml_nftl_lock);
 			set_current_state(TASK_INTERRUPTIBLE);
-			schedule_timeout(period);
+			schedule_timeout(10);
 
 			mutex_lock(&aml_nftl_lock);
 			aml_nftl_info->creat_structure(aml_nftl_info);
@@ -761,7 +761,7 @@ static void aml_nftl_remove_dev(struct mtd_blktrans_dev *dev)
 static struct mtd_blktrans_ops aml_nftl_tr = {
 	.name		= "avnftl",
 	.major		= AML_NFTL_MAJOR,
-	.part_bits	= 0,
+	.part_bits	= 2,
 	.blksize 	= 512,
 	.open		= aml_nftl_open,
 	.release	= aml_nftl_release,

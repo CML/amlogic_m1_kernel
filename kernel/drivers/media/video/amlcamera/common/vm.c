@@ -67,7 +67,6 @@ static int VM_CANVAS_INDEX = 24;
 
 static int vm_skip_count = 5 ; //skip 5 frames from vdin
 static int test_zoom = 0;
-int gl_vm_skip_count = 0 ;
 
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
@@ -286,7 +285,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
         case VFRAME_EVENT_PROVIDER_START:
         //printk("vm register!!!!!\n");
 		vf_vm_reg_provider();
-		vm_skip_count = gl_vm_skip_count; 
+		vm_skip_count = 0; 
 		test_zoom = 0;
 		break;
         case VFRAME_EVENT_PROVIDER_UNREG:  
@@ -430,32 +429,28 @@ static int get_input_format(vframe_t* vf)
 
 static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
 {
-    int ret = 0;
-    int top, left,  bottom ,right;
-    if (!vf)
-        return -1;
-
-    frame->frame_top = 0;   
-    frame->frame_left = 0 ;   
-    frame->frame_width = vf->width;
-    frame->frame_height = vf->height;
-    top = 0;
-    bottom = vf->height-1;
-    left = 0;
-    right = vf->width-1;
-    ret = get_curren_frame_para(&top ,&left , &bottom, &right,cur_disable_mode);
-    if(ret >= 0 ){
-        frame->content_top = top&(~1);
-        frame->content_left = left&(~1);
-        frame->content_width = vf->width - 2*frame->content_left ;
-        frame->content_height = vf->height - 2*frame->content_top;
-    }else{
-        frame->content_top = 0;             
-        frame->content_left = 0 ;           
-        frame->content_width = vf->width;     
-        frame->content_height = vf->height;
-    }
-    return 0;
+	int ret = 0 ;	
+	int top, left,  bottom ,right;
+	if(!vf){
+		return -1;	
+	}
+	frame->frame_top  =     0;   
+	frame->frame_left  =     0 ;   
+	frame->frame_width   =  vf->width;
+	frame->frame_height   = vf->height;
+	ret = get_curren_frame_para(&top ,&left , &bottom, &right);	
+	if(ret >= 0 ){
+  		frame->content_top     =  top&(~1);
+		frame->content_left    =  left&(~1);
+		frame->content_width   =  vf->width - 2*frame->content_left ;
+		frame->content_height  =  vf->height - 2*frame->content_top;
+	}else{
+		frame->content_top     = 0;             
+		frame->content_left    =  0 ;           
+		frame->content_width   = vf->width;     
+		frame->content_height  = vf->height   	;
+	}
+	return 0;
 }
 
 static int get_output_format(int v4l2_format)

@@ -32,11 +32,4 @@ config USB_PHY_CONTROL
 					[y]Enalbe this config to use additional function that
 						 control amlogic usb controller's power, clock, tuning and others..
 					[n]Disable this config to disable this function.
-					
-config USB_DPLINE_PULLUP_DISABLE
-				bool "Amlogic usb D+ pullup disable when initial"
-				depends on USB_DWC_OTG_HCD
-				default n
-				help
-					Enable this config to pull down D+ when initial usb 				
 endmenu

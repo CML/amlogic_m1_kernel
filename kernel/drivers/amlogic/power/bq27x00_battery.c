@@ -240,7 +240,7 @@ static int bq27x00_battery_time(struct bq27x00_device_info *di, int reg,
 	return 0;
 }
 
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID
 int pc_connect(int status) 
 {
     new_usb_status = status; 
@@ -307,15 +307,6 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = bq27x00_battery_temperature(di);
 		break;
-//	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
-//		ret = bq27x00_battery_time(di, BQ27x00_REG_TTE, val);
-//		break;
-//	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
-//		ret = bq27x00_battery_time(di, BQ27x00_REG_TTECP, val);
-//		break;
-//	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
-//		ret = bq27x00_battery_time(di, BQ27x00_REG_TTF, val);
-//		break;
     case POWER_SUPPLY_PROP_TECHNOLOGY:
         val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
         break;
@@ -667,7 +658,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	if (retval < 0)
 		return retval;
     pdata = (struct bq27x00_battery_pdata*)client->dev.platform_data;
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID
     pdata->is_usb_online = gadget_is_usb_online;
 #endif
 	if (pdata->set_charge) {

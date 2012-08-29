@@ -919,7 +919,7 @@ int mpu3050_resume(struct mldl_cfg *mldl_cfg,
 	int ii;
 	int jj;
 	unsigned char reg;
-    int retry = 0;
+
 
 #ifdef CONFIG_SENSORS_MPU_DEBUG
 	mpu_print_cfg(mldl_cfg);
@@ -1001,50 +1001,35 @@ int mpu3050_resume(struct mldl_cfg *mldl_cfg,
 				       mldl_cfg->dmp_cfg2);
 	ERROR_CHECK(result);
 
-#define ERROR_CHECK_MEM(result, loop, ret)                               \
-            if (ML_SUCCESS != result) {                     \
-			    MPL_LOGE("%s|%s|%d returning %d, retry %d\n",	\
-				__FILE__, __func__, __LINE__, ret, retry);	\
-                if (retry++ > MAX_RETRY) {                  \
-                    return ret;                               \
-                } else {                                    \
-                    loop--;                                    \
-                    continue;                               \
-                }                                           \
-            }
+	/* Write and verify memory */
+	for (ii = 0; ii < MPU_MEM_NUM_RAM_BANKS; ii++) {
+		unsigned char read[MPU_MEM_BANK_SIZE];
 
-#define MAX_RETRY   100
+		result = MLSLSerialWriteMem(mlsl_handle, mldl_cfg->addr,
+					    ((ii << 8) | 0x00),
+					    MPU_MEM_BANK_SIZE,
+					    mldl_cfg->ram[ii]);
+		ERROR_CHECK(result);
+		result = MLSLSerialReadMem(mlsl_handle, mldl_cfg->addr,
+					   ((ii << 8) | 0x00),
+					   MPU_MEM_BANK_SIZE, read);
+		ERROR_CHECK(result);
 
 #ifdef M_HW
 #define ML_SKIP_CHECK 38
 #else
 #define ML_SKIP_CHECK 20
 #endif
-
-	/* Write and verify memory */
-    for (ii = 0; ii < MPU_MEM_NUM_RAM_BANKS; ii++) {
-        unsigned char readback;
-
-        for (jj = 0; jj < MPU_MEM_BANK_SIZE; jj++){
-            result = MLSLSerialWriteMem(mlsl_handle, mldl_cfg->addr,
-                             ((ii << 8) | jj),
-                             1,
-                             &mldl_cfg->ram[ii][jj]);
-
-            ERROR_CHECK_MEM(result, jj, result)
-
-            result = MLSLSerialReadMem(mlsl_handle, mldl_cfg->addr,
-                            ((ii << 8) | jj),
-                            1, &readback);
-            ERROR_CHECK_MEM(result, jj, result)
-
+		for (jj = 0; jj < MPU_MEM_BANK_SIZE; jj++) {
+			/* skip the register memory locations */
 			if (ii == 0 && jj < ML_SKIP_CHECK)
 				continue;
-
-            if (readback != mldl_cfg->ram[ii][jj]) {
-                ERROR_CHECK_MEM(ML_ERROR_SERIAL_WRITE, jj, ML_ERROR_SERIAL_WRITE);
-            }
-        }
+			if (mldl_cfg->ram[ii][jj] != read[jj]) {
+				result = ML_ERROR_SERIAL_WRITE;
+				break;
+			}
+		}
+		ERROR_CHECK(result);
 	}
 
 	result = MLSLSerialWriteSingle(mlsl_handle, mldl_cfg->addr,

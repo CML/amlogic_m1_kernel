@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/workqueue.h>
+#include <linux/switch.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -29,6 +30,7 @@
 #if HP_DET
 static struct timer_list timer;
 static int hp_detect_flag = 0;
+static struct switch_dev sdev;
 void mute_spk(struct snd_soc_codec* codec, int flag);
 #endif
 
@@ -162,7 +164,8 @@ static void cs42l52_hp_detect_queue(struct work_struct* work)
 				snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL_HP);
         mute_spk(codec, 1);
         snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
-        hp_detect_flag = level;       
+        hp_detect_flag = level;
+	switch_set_state(&sdev, 1);
     }else if(level != hp_detect_flag){ // HDMI
         printk("Headphone unpluged\n");
         snd_soc_dapm_enable_pin(codec, "Ext Spk");
@@ -173,6 +176,7 @@ static void cs42l52_hp_detect_queue(struct work_struct* work)
 				snd_soc_write(codec, CODEC_CS42L52_BEEP_TONE_CTL, DEFAULT_BEEP_TONE_CTL);
 				snd_soc_write(codec, CODEC_CS42L52_TONE_CTL, DEFAULT_TONE_CTL);
         mute_spk(codec, 0);
+	switch_set_state(&sdev, 0);
     }
 }
 
@@ -198,9 +202,16 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
         dev_warn(card->dev, "Failed to register DAPM widgets\n");
         return 0;
     }
-
+//    err = snd_soc_dapm_add_routes(codec, intercon,
+//        ARRAY_SIZE(intercon));
+//    if(err){
+//        dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
+//        return 0;
+//    }
+//      printk("***aml_m1_codec_init 3***\n");
 #if HP_DET
-   struct cs42l52_platform_data *pdata = soc_cs42l52_dai.ac97_pdata;
+
+    struct cs42l52_platform_data *pdata = soc_cs42l52_dai.ac97_pdata;
    if (pdata && pdata->is_hp_pluged) {
    			if (pdata->is_hp_pluged > 1)
         	hp_detect_flag = pdata->is_hp_pluged();
@@ -298,12 +309,22 @@ static int aml_m1_audio_probe(struct platform_device *pdev)
     ret = platform_device_add(aml_m1_snd_device);
     if (ret) {
         printk(KERN_ERR "ASoC: Platform device allocation failed\n");
-        goto error;
+        goto error2;
     }
 
     aml_m1_platform_device = platform_device_register_simple("aml_m1_codec", -1, NULL, 0);
+#if HP_DET
+	sdev.name = "h2w";//for report headphone to android
+	ret = switch_dev_register(&sdev);
+	if (ret < 0){
+		printk(KERN_ERR "ASoC: register switch dev failed\n");
+		goto error1;
+	}
+#endif
     return 0;
-error:
+error1:
+	platform_device_unregister(aml_m1_snd_device);
+error2:
     platform_device_put(aml_m1_snd_device);
     return ret;
 }
@@ -313,7 +334,7 @@ static int aml_m1_audio_remove(struct platform_device *pdev)
     printk("***Entered %s:%s\n", __FILE__,__func__);
 #if HP_DET
     del_timer_sync(&timer);
-    
+    switch_dev_unregister(&sdev);
 #endif
     platform_device_unregister(aml_m1_snd_device);
     return 0;

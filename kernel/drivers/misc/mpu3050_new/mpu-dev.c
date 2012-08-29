@@ -995,89 +995,6 @@ static struct miscdevice i2c_mpu_device = {
 };
 
 
-/**********************20110921 dump test code******************/
-#define MPU_DUMP_DEBUG 
-
-static struct timer_list * mpu_debug_timer;
-static struct work_struct *mpu_debug_work;
-static int mpu_debug_delay	= 500;
-	
-static void mpu_debug_read()
-{
-	int ret	= 0;
-	u16 data_xyz[3];
-	unsigned char local_data[6];
-	
-	struct i2c_client *client 		= this_client;
-	struct mpu_private_data *mpu 	= (struct mpu_private_data *) i2c_get_clientdata(client);
-	struct mldl_cfg *mldl_cfg 		= &mpu->mldl_cfg;
-		
-	ret = mpu3050_read_accel(mldl_cfg, client->adapter, local_data);
-	
-	data_xyz[0]	=((0xFF & local_data[0])<<4 )|((0xFF & local_data[1])>>4);
-	data_xyz[1]	=((0xFF & local_data[2])<<4 )|((0xFF & local_data[3])>>4);
-	data_xyz[2]	=((0xFF & local_data[4])<<4 )|((0xFF & local_data[5])>>4);
-	
-	printk("zhuw:%s:i2c ret:%d x:0x%04x,y:0x%04x,z:0x%04x\n",__FUNCTION__,ret,data_xyz[0],data_xyz[1],data_xyz[2]);	
-
-	mpu_debug_timer->expires	= jiffies + msecs_to_jiffies(mpu_debug_delay);
-	add_timer(mpu_debug_timer);	
-}
-
-static void mpu_debug_timer_func(u_long data)
-{
-	schedule_work(mpu_debug_work);
-}
-
-static ssize_t mpu_debug_suspend(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-
-	return count;
-}
-
-static ssize_t debug_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	int ret	= 0;
-	u16 index;
-	
-	sscanf(buf,"%d",&index);
-	
-	printk("zhuw:%s write value:%d,count:%d\n",__FUNCTION__,index,count);
-	mpu_debug_delay	=	index;
-
-	switch(index){
-		case	0:
-			if(!timer_pending(mpu_debug_timer)){
-				goto DEBUG_WRITE_END;
-			}
-			del_timer(mpu_debug_timer);
-			break;
-		default:	
-			if(timer_pending(mpu_debug_timer)){
-				goto DEBUG_WRITE_END;
-			}		
-			mpu_debug_timer->expires	= jiffies + msecs_to_jiffies(mpu_debug_delay);
-			add_timer(mpu_debug_timer);
-			break;
-	}
-DEBUG_WRITE_END:
-	return count;
-}
-
-static DEVICE_ATTR(supend,S_IRWXUGO,NULL,mpu_debug_suspend);
-static DEVICE_ATTR(debug,S_IRWXUGO,NULL,debug_write);
-static struct attribute *mpu_attr_group[]	={
-	&dev_attr_debug.attr,
-	&dev_attr_supend.attr,
-	NULL,
-};
-
-static struct attribute_group mpu_attr={
-	.name	= NULL,
-	.attrs	= mpu_attr_group,
-};
-/*************************************************************/
-
 int mpu3050_probe(struct i2c_client *client,
 		  const struct i2c_device_id *devid)
 {
@@ -1226,21 +1143,6 @@ int mpu3050_probe(struct i2c_client *client,
 	}
 
 	res = misc_register(&i2c_mpu_device);
-/***********************************************************/
-#ifdef MPU_DUMP_DEBUG
-	mpu_debug_work	= (struct work_struct *)kzalloc(sizeof(struct work_struct), GFP_KERNEL);
-	mpu_debug_timer	= (struct timer_list *)kzalloc(sizeof(struct timer_list), GFP_KERNEL);
-	INIT_WORK(mpu_debug_work, mpu_debug_read);
-
-	mpu_debug_timer->function = mpu_debug_timer_func;
-	mpu_debug_timer->data	= (unsigned long ) client;
-	init_timer(mpu_debug_timer);
-
-	struct device *dev_tmp	= i2c_mpu_device.this_device;
-	sysfs_create_group(&(dev_tmp->kobj),&mpu_attr);
-	
-#endif	
-/***********************************************************/	
 	if (res < 0) {
 		dev_err(&this_client->adapter->dev,
 			"ERROR: misc_register returned %d\n", res);

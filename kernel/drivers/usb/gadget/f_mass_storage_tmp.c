@@ -367,7 +367,6 @@ struct fsg_dev {
 	struct switch_dev sdev;
 
 	struct wake_lock wake_lock;
-	int unremovableflag;
 };
 
 static inline struct fsg_dev *func_to_dev(struct usb_function *f)
@@ -1256,10 +1255,7 @@ static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 
 	memset(buf, 0, 8);	/* Non-removable, direct-access device */
 
-	if(fsg->unremovableflag)
-	   buf[1] = 0;	/* set removable bit */
-	else
-		 buf[1] = 0x80;
+	buf[1] = 0x80;	/* set removable bit */
 	buf[2] = 2;		/* ANSI SCSI level 2 */
 	buf[3] = 2;		/* SCSI-2 INQUIRY data format */
 	buf[4] = 31;		/* Additional length */
@@ -2939,11 +2935,6 @@ static int __init fsg_probe(struct platform_device *pdev)
 
 		if (pdata->release)
 			fsg->release = pdata->release;
-			
-		if(pdata->unremovableflag)
-			fsg->unremovableflag = pdata->unremovableflag;
-		else
-		  fsg->unremovableflag = 0; 
 		fsg->nluns = pdata->nluns;
 	}
 

@@ -459,8 +459,7 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
 
  //   aprint("+ level = %d, count=%d\n", amaudio_inbuf.level, count/2);
     
-err: 
- int_in = 0;    
+    int_in = 0;    
 
     spin_unlock(&amaudio_clk_lock);
     return IRQ_HANDLED;

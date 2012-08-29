@@ -65,7 +65,7 @@
 #define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
 
 
-#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
+#if 1 //defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 #define DI_MEM_SIZE			(SZ_1M*3)
 #else
 #define DI_MEM_SIZE			(SZ_1M*15)

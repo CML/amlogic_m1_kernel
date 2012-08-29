@@ -25,7 +25,7 @@
 #include <linux/module.h>
 #include <linux/saradc.h>
 
-#define POLL_INTERVAL	2500 	/* poll for input every 2.5s */
+#define POLL_INTERVAL	3000 	/* poll for input every 3s */
 #define LUX_LEVEL		4		/* 0~4 report 5 levels */
 
 static struct platform_device *pdev;

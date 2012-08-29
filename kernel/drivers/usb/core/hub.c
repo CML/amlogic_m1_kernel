@@ -785,7 +785,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 				set_bit(port1, hub->change_bits);
 
 		} else if (udev->persist_enabled) {
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 			udev->reset_resume = 1;
 #endif
 			set_bit(port1, hub->change_bits);
@@ -2063,7 +2063,7 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 	return status;
 }
 
-#ifdef	CONFIG_PM
+#ifdef	CONFIG_PM_NOUSE
 
 #define MASK_BITS	(USB_PORT_STAT_POWER | USB_PORT_STAT_CONNECTION | \
 				USB_PORT_STAT_SUSPEND)

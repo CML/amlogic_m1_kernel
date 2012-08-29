@@ -113,9 +113,7 @@ int cs42l52_read_register(struct i2c_client *client, u8 addr)
 
 static ssize_t cs42l52_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	  struct i2c_client *client = container_of(dev, struct i2c_client, dev);
-		struct cs42l52_priv *cs42l52 = i2c_get_clientdata(client);
-	  struct snd_soc_codec *codec = &cs42l52->codec;
+	struct snd_soc_codec *codec = dev_get_drvdata(dev);	
     u8 reg_addr, reg_data;
     
     if (!strcmp(attr->attr.name, "reg")) {
@@ -367,7 +365,7 @@ static const char *cs42l52_hpmux[] = {"Off", "On"};
 
 static const struct soc_enum soc_cs42l52_enum[] = {
 SOC_ENUM_DOUBLE(CODEC_CS42L52_ANALOG_HPF_CTL, 4, 6, 2, cs42l52_hpf_freeze), /*0*/
-SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_HPF_FREQ, 3, 4, cs42l52_hpf_corner_freq),
+SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_HPF_FREQ, 0, 4, cs42l52_hpf_corner_freq),
 SOC_ENUM_SINGLE(CODEC_CS42L52_ADC_MISC_CTL, 4, 4, cs42l52_adc_sum),
 SOC_ENUM_DOUBLE(CODEC_CS42L52_ADC_MISC_CTL, 2, 3, 2, cs42l52_sig_polarity),
 SOC_ENUM_DOUBLE(CODEC_CS42L52_PB_CTL1, 2, 3, 2, cs42l52_sig_polarity),
@@ -796,6 +794,7 @@ unsigned int tca_cs42L52_initcodec(struct snd_soc_codec *codec)
   	snd_soc_write(codec, CODEC_CS42L52_PWCTL1,0x1F);   
  	snd_soc_write(codec, CODEC_CS42L52_PWCTL2, 0x07);
  	//snd_soc_write(codec, CODEC_CS42L52_PWCTL3, 0x05); //current low vaild,previous is high vaild0x50
+// 	snd_soc_write(codec, CODEC_CS42L52_PWCTL3, 0x50); 
     snd_soc_write(codec, CODEC_CS42L52_CLK_CTL, 0xa0);
     snd_soc_write(codec, CODEC_CS42L52_IFACE_CTL1, 0x24);
 	snd_soc_write(codec, CODEC_CS42L52_IFACE_CTL2, 0x00);			
@@ -1014,23 +1013,15 @@ struct  snd_soc_dai soc_cs42l52_dai = {
 
 EXPORT_SYMBOL_GPL(soc_cs42l52_dai);
 
-#if 0
 static int soc_cs42l52_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	printk("%s\n",__FUNCTION__);
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *soc_codec = socdev->card->codec;
-	struct cs42l52_platform_data *pdata = pdev->dev.platform_data;
-
+	
 	snd_soc_write(soc_codec, CODEC_CS42L52_PWCTL1, PWCTL1_PDN_CODEC);
 	soc_cs42l52_set_bias_level(soc_codec, SND_SOC_BIAS_OFF);
-	if(pdata&&pdata->cs42l52_power_down_io){
-		printk("***cs42l52 power down***\n");
-		pdata->cs42l52_power_down_io();
-	}
-	else{
-		printk("***cs42l52 power down failt***\n");
-	    }
+
 	return 0;
 }
 
@@ -1067,7 +1058,7 @@ static int soc_cs42l52_resume(struct platform_device *pdev)
 	return 0;
 
 }
-#endif
+
 static struct snd_soc_codec *cs42l52_codec;
 
 static int soc_cs42l52_probe(struct platform_device *pdev)
@@ -1114,10 +1105,8 @@ static int soc_cs42l52_remove(struct platform_device *pdev)
 struct snd_soc_codec_device soc_codec_cs42l52_dev = {
 	.probe = soc_cs42l52_probe,
 	.remove = soc_cs42l52_remove,
-#if 0
 	.suspend = soc_cs42l52_suspend,
 	.resume = soc_cs42l52_resume,
-#endif
 };
 
 EXPORT_SYMBOL_GPL(soc_codec_cs42l52_dev);
@@ -1327,7 +1316,7 @@ static int cs42l52_i2c_remove(struct i2c_client *client)
     cs42l52_unregister(cs42l52);
     return 0;
 }
-
+#if 0
 static int cs42l52_i2c_shutdown(struct i2c_client *client)
 {
 
@@ -1337,7 +1326,7 @@ static int cs42l52_i2c_shutdown(struct i2c_client *client)
   cs42l52_unregister(cs42l52);
   return 0;
 }
-
+#endif
 static const struct i2c_device_id cs42l52_i2c_id[] = {
 	{ "cs42l52", 0 },
 	{ }
@@ -1352,7 +1341,9 @@ static struct i2c_driver cs42l52_i2c_drv = {
 	.probe =    cs42l52_i2c_probe,
 	.remove =   __devexit_p(cs42l52_i2c_remove),
 	.id_table = cs42l52_i2c_id,
+#if 0
 	.shutdown = cs42l52_i2c_shutdown,
+#endif
 
 };
 

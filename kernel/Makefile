@@ -226,8 +226,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
-HOSTCXXFLAGS = -O2
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O3 -fomit-frame-pointer
+HOSTCXXFLAGS = -O3
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -348,9 +348,9 @@ KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
+		   -Wno-format-security -Wunused-but-set-variable \
 		   -fno-delete-null-pointer-checks \
-		   -ffast-math -fsingle-precision-constant -pipe -mtune=cortex-a9 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp \
+		   -ffast-math -fsingle-precision-constant -pipe -mtune=cortex-a9 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp -mno-unaligned-access \
 		   --param l2-cache-size=512 --param l1-cache-size=64 --param simultaneous-prefetches=8
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
@@ -530,7 +530,7 @@ all: vmlinux
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -O2
+KBUILD_CFLAGS	+= -O3
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile

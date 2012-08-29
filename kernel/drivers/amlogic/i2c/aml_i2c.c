@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 #include <linux/ioport.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/i2c-aml.h>
 #include <linux/i2c-algo-bit.h>
 
@@ -74,44 +75,7 @@ static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 
 static void aml_i2c_dbg(struct aml_i2c *i2c)
 {
-	int i;
-	struct aml_i2c_reg_ctrl* ctrl;
 
-	if(i2c->i2c_debug == 0)
-		return ;
-	
-	printk( "i2c_slave_addr:  0x%x\n", 
-								i2c->master_regs->i2c_slave_addr);
-	printk( "i2c_token_list_0:  0x%x\n", 
-								i2c->master_regs->i2c_token_list_0);
-	printk( "i2c_token_list_1:  0x%x\n", 
-								i2c->master_regs->i2c_token_list_1);
-	printk( "i2c_token_wdata_0:  0x%x\n", 
-								i2c->master_regs->i2c_token_wdata_0);
-	printk( "i2c_token_wdata_1:  0x%x\n", 
-								i2c->master_regs->i2c_token_wdata_1);
-	printk( "i2c_token_rdata_0:  0x%x\n", 
-								i2c->master_regs->i2c_token_rdata_0);
-	printk( "i2c_token_rdata_1:  0x%x\n", 
-								i2c->master_regs->i2c_token_rdata_1);
-	for(i=0; i<AML_I2C_MAX_TOKENS; i++)
-		printk("token_tag[%d]  %d\n", i, i2c->token_tag[i]);
-	
-	ctrl = ((struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl));
-	printk( "i2c_ctrl:  0x%x\n", i2c->master_regs->i2c_ctrl);
-	printk( "ctrl.rdsda  0x%x\n", ctrl->rdsda);
-	printk( "ctrl.rdscl  0x%x\n", ctrl->rdscl);
-	printk( "ctrl.wrsda  0x%x\n", ctrl->wrsda);
-	printk( "ctrl.wrscl  0x%x\n", ctrl->wrscl);
-	printk( "ctrl.manual_en  0x%x\n", ctrl->manual_en);
-	printk( "ctrl.clk_delay  0x%x\n", ctrl->clk_delay);
-	printk( "ctrl.rd_data_cnt  0x%x\n", ctrl->rd_data_cnt);
-	printk( "ctrl.cur_token  0x%x\n", ctrl->cur_token);
-	printk( "ctrl.error  0x%x\n", ctrl->error);
-	printk( "ctrl.status  0x%x\n", ctrl->status);
-	printk( "ctrl.ack_ignore  0x%x\n", ctrl->ack_ignore);
-	printk( "ctrl.start  0x%x\n", ctrl->start);
-								
 }
 
 static void aml_i2c_clear_token_list(struct aml_i2c *i2c)
@@ -357,7 +321,7 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 							int num)
 {
 	struct aml_i2c *i2c = &aml_i2c_ddata;
-	struct i2c_msg * p;
+	struct i2c_msg * p=NULL;
 	unsigned int i;
 	unsigned int ret=0;
 	
@@ -431,34 +395,18 @@ static int aml_i2c_xfer_slow(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 	
 	i2c->ops->stop(i2c);
 
-	mutex_unlock(&i2c->lock);
-
-	AML_I2C_DBG("aml_i2c_xfer_slow");
-	if (p->flags & I2C_M_RD){
-		AML_I2C_DBG("read ");
-	}
-	else {
-		AML_I2C_DBG("write ");
-	}
-	for(i=0;i<p->len;i++)
-		AML_I2C_DBG("%x-",*(p->buf)++);
-	AML_I2C_DBG("\n");
-	
 	i2c->master_i2c_speed = last_speed;
 	/* Return the number of messages processed, or the error code*/
-	if (ret == 0)
+	if (ret == 0){
+		mutex_unlock(&i2c->lock);
+
 		return num;
+	}
 	else {
 		struct aml_i2c_reg_ctrl* ctrl;
 		
-		//printk("i2c master %s current slave addr is 0x%x \t", 
-						//i2c->master_no?"a":"b", i2c->cur_slave_addr);
-
 		ctrl = ((struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl));
-		//if(ctrl->cur_token == TOKEN_START)
-			//printk("error addr\n");
-		//else
-			//printk("error data\n");
+		mutex_unlock(&i2c->lock);
 		return ret;
 	}
 }
@@ -737,7 +685,11 @@ static int aml_i2c_probe(struct platform_device *pdev)
 
 static int aml_i2c_remove(struct platform_device *pdev) 
 {
-	i2c_del_adapter(&aml_i2c_adapter);
+	struct aml_i2c *i2c = platform_get_drvdata(pdev);
+	i2c_del_adapter(&i2c->adap);
+    i2c_del_adapter(&aml_i2c_adapter);
+    kzfree(i2c);
+    i2c= NULL;
 	return 0;
 }
 

@@ -1800,7 +1800,7 @@ int usb_hcd_get_frame_number (struct usb_device *udev)
 
 /*-------------------------------------------------------------------------*/
 
-#ifdef	CONFIG_PM
+#ifdef	CONFIG_PM_NOUSE
 
 int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 {
@@ -1861,7 +1861,7 @@ int hcd_bus_resume(struct usb_device *rhdev, pm_message_t msg)
 
 #endif	/* CONFIG_PM */
 
-#ifdef	CONFIG_USB_SUSPEND
+#ifdef	CONFIG_USB_SUSPEND_NOUSE
 
 /* Workqueue routine for root-hub remote wakeup */
 static void hcd_resume_work(struct work_struct *work)
@@ -2039,7 +2039,7 @@ struct usb_hcd *usb_create_hcd (const struct hc_driver *driver,
 	init_timer(&hcd->rh_timer);
 	hcd->rh_timer.function = rh_timer_func;
 	hcd->rh_timer.data = (unsigned long) hcd;
-#ifdef CONFIG_USB_SUSPEND
+#ifdef CONFIG_USB_SUSPEND_NOUSE
 	INIT_WORK(&hcd->wakeup_work, hcd_resume_work);
 #endif
 	mutex_init(&hcd->bandwidth_mutex);
@@ -2239,7 +2239,7 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	hcd->rh_registered = 0;
 	spin_unlock_irq (&hcd_root_hub_lock);
 
-#ifdef CONFIG_USB_SUSPEND
+#ifdef CONFIG_USB_SUSPEND_NOUSE
 	cancel_work_sync(&hcd->wakeup_work);
 #endif
 

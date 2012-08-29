@@ -2105,7 +2105,7 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	dhd_os_wd_timer(&dhd->pub, dhd_watchdog_ms);
 
 	/* Bring up the bus */
-	if ((ret = dhd_bus_init(&dhd->pub, FALSE)) != 0) {
+	if ((ret = dhd_bus_init(&dhd->pub, TRUE)) != 0) {
 		DHD_ERROR(("%s, dhd_bus_init failed %d\n", __FUNCTION__, ret));
 		return ret;
 	}
@@ -2456,7 +2456,7 @@ dhd_module_init(void)
 	}
 
 	/* Waiting callback after platform_driver_register is done or exit with error */
-	if (down_timeout(&wifi_control_sem,  msecs_to_jiffies(1000)) != 0) {
+	if (down_timeout(&wifi_control_sem,  msecs_to_jiffies(5000)) != 0) {
 		printk("%s: platform_driver_register timeout\n", __FUNCTION__);
 		/* renove device */
 		wifi_del_dev();
@@ -2476,6 +2476,7 @@ dhd_module_init(void)
 		DHD_ERROR(("%s: sdio_register_driver failed\n", __FUNCTION__));
 		goto faild;
 	}
+#if 0
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 	/*
 	 * Wait till MMC sdio_register_driver callback called and made driver attach.
@@ -2487,6 +2488,7 @@ dhd_module_init(void)
 		DHD_ERROR(("%s: sdio_register_driver timeout\n", __FUNCTION__));
 		dhd_bus_unregister();
 	}
+#endif
 #endif
 	return error;
 
@@ -2547,14 +2549,17 @@ dhd_os_ioctl_resp_wait(dhd_pub_t *pub, uint *condition, bool *pending)
 	int timeout = dhd_ioctl_timeout_msec;
 
 	/* Convert timeout in millsecond to jiffies */
-	timeout = timeout * HZ / 1000;
+	/* timeout = timeout * HZ / 1000; */
+	timeout = msecs_to_jiffies(timeout);
 
 	/* Wait until control frame is available */
 	add_wait_queue(&dhd->ioctl_resp_wait, &wait);
 	set_current_state(TASK_INTERRUPTIBLE);
-
-	while (!(*condition) && (!signal_pending(current) && timeout))
+	smp_mb();
+	while (!(*condition) && (!signal_pending(current) && timeout)) {
 		timeout = schedule_timeout(timeout);
+		smp_mb();
+	}
 
 	if (signal_pending(current))
 		*pending = TRUE;

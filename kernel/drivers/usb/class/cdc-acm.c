@@ -1378,7 +1378,7 @@ static void acm_disconnect(struct usb_interface *intf)
 	}
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 static int acm_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct acm *acm = usb_get_intfdata(intf);
@@ -1625,7 +1625,7 @@ static struct usb_driver acm_driver = {
 	.name =		"cdc_acm",
 	.probe =	acm_probe,
 	.disconnect =	acm_disconnect,
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 	.suspend =	acm_suspend,
 	.resume =	acm_resume,
 	.reset_resume =	acm_reset_resume,

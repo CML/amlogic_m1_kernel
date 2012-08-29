@@ -38,6 +38,7 @@
 #include <media/amlogic/aml_camera.h>
 
 #include <mach/am_regs.h>
+#include <mach/am_eth_pinmux.h>
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
@@ -74,8 +75,6 @@ static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
-static int gc0308_have_open=0;
-extern int gl_vm_skip_count;
 
 /* supported controls */
 static struct v4l2_queryctrl gc0308_qctrl[] = {
@@ -155,15 +154,6 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.id            = V4L2_CID_WHITENESS,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "banding",
-		.minimum       = 0,
-		.maximum       = 1,
-		.step          = 0x1,
-		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},{
-		.id            = V4L2_CID_BLUE_BALANCE,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "scene mode",
 		.minimum       = 0,
 		.maximum       = 1,
 		.step          = 0x1,
@@ -335,9 +325,9 @@ static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
 	return container_of(dev, struct gc0308_fh, dev);
 }
 
-static struct v4l2_frmsize_discrete gc0308_prev_resolution[2]= //should include 320x240 and 640x480, those two size are used for recording
+static struct v4l2_frmsize_discrete gc0308_prev_resolution[2]=
 {
-	{352,288},
+	{320,240},
 	{640,480},
 };
 
@@ -353,89 +343,106 @@ static struct v4l2_frmsize_discrete gc0308_pic_resolution[1]=
 #if 1
 
 struct aml_camera_i2c_fig1_s GC0308_script[] = {
-    {0xfe,0x80},
-    {0xfe,0x00},
+        {0xfe,0x80},
+	{0xfe,0x00},
     {0x22,0x55},
-    {0x03,0x02},
-    {0x04,0x58},//12c
+    {0x03,0x01},
+    {0x04,0x2c},
     {0x5a,0x56},
     {0x5b,0x40},
     {0x5c,0x4a},
     {0x22,0x57},
-
+	{0x0f,0x00},
 #if 0
 //25M mclk
 #if 1   // 50hz  20fps
-	{0x01 , 0x32},
-	{0x02 , 0x89},
-	{0x0f , 0x01},
-
-
-	{0xe2 , 0x00},   //anti-flicker step [11:8]
-	{0xe3 , 0x7d},   //anti-flicker step [7:0]
-
-	{0xe4 , 0x02},
-	{0xe5 , 0x71},
-	{0xe6 , 0x02},
-	{0xe7 , 0x71},
-	{0xe8 , 0x02},
-	{0xe9 , 0x71},
-	{0xea , 0x0c},
-	{0xeb , 0x35},
+	{0x01 , 0x32},                                    
+	{0x02 , 0x89},                                  
+	{0x0f , 0x01},                                  
+	                                                               
+	                                                               
+	{0xe2 , 0x00},   //anti-flicker step [11:8]     
+	{0xe3 , 0x7d},   //anti-flicker step [7:0]      
+		                                                               
+	{0xe4 , 0x02},       
+	{0xe5 , 0x71},                                  
+	{0xe6 , 0x02},           
+	{0xe7 , 0x71},                                  
+	{0xe8 , 0x02},           
+	{0xe9 , 0x71},                                  
+	{0xea , 0x0c},     
+	{0xeb , 0x35},                                  
 #else  // 60hz  20fps
-	{0x01 , 0x92},
-	{0x02 , 0x84},
-	{0x0f , 0x00},
-
-
-	{0xe2 , 0x00},   //anti-flicker step [11:8]
-	{0xe3 , 0x7c},   //anti-flicker step [7:0]
-
-	{0xe4 , 0x02},
-	{0xe5 , 0x6c},
-	{0xe6 , 0x02},
-	{0xe7 , 0x6c},
-	{0xe8 , 0x02},
-	{0xe9 , 0x6c},
-	{0xea , 0x0c},
-	{0xeb , 0x1c},
+	{0x01 , 0x92},                                    
+	{0x02 , 0x84},                                  
+	{0x0f , 0x00},                                  
+	                                                               
+	                                                               
+	{0xe2 , 0x00},   //anti-flicker step [11:8]     
+	{0xe3 , 0x7c},   //anti-flicker step [7:0]      
+		                                                               
+	{0xe4 , 0x02},          
+	{0xe5 , 0x6c},                                  
+	{0xe6 , 0x02},          
+	{0xe7 , 0x6c},                                  
+	{0xe8 , 0x02},         
+	{0xe9 , 0x6c},                                  
+	{0xea , 0x0c},           
+	{0xeb , 0x1c},   
 #endif
 
 #else
 
-#if 1   // 50hz   24M MCLKauto
-	{0x01 , 0x32},  //6a
-	{0x02 , 0x70},
-	{0x0f , 0x01},
+#if 1   // 50hz   8.3fps~16.6fps auto
+	/*{0x01 , 0x32},  //6a                                  
+	{0x02 , 0x70},                                  
+	{0x0f , 0x01},                                  
+
+
+	{0xe2 , 0x00},   //anti-flicker step [11:8]     
+	{0xe3 , 0x78},   //anti-flicker step [7:0]      
+
+	{0xe4 , 0x02},       
+	{0xe5 , 0x58},                                  
+	{0xe6 , 0x02},           
+	{0xe7 , 0x58},                                  
+	{0xe8 , 0x02},           
+	{0xe9 , 0x58},                                  
+	{0xea , 0x07},     
+	{0xeb , 0x53},    */
+	{0x01 , 0x6a},  //6a
+	{0x02 , 0x48},
+	{0x0f , 0x00},
+
 
 	{0xe2 , 0x00},   //anti-flicker step [11:8]
-	{0xe3 , 0x78},   //anti-flicker step [7:0]
+	{0xe3 , 0x50},   //anti-flicker step [7:0]
 
 	{0xe4 , 0x02},
-	{0xe5 , 0x58},
-	{0xe6 , 0x03},
-	{0xe7 , 0x48},
-	{0xe8 , 0x04},
-	{0xe9 , 0xb0},
-	{0xea , 0x05},
-	{0xeb , 0xa0},
-#else  // 60hz   8.3fps~16.6fps auto
-	{0x01 , 0x32},
-	{0x02 , 0x89},
-	{0x0f , 0x01},
-
-
-	{0xe2 , 0x00},   //anti-flicker step [11:8]
-	{0xe3 , 0x68},   //anti-flicker step [7:0]
-
-	{0xe4 , 0x02},
-	{0xe5 , 0x71},
+	{0xe5 , 0x30},
 	{0xe6 , 0x02},
-	{0xe7 , 0x71},
-	{0xe8 , 0x04},
-	{0xe9 , 0xe2},
-	{0xea , 0x07},
-	{0xeb , 0x53},
+	{0xe7 , 0x30},
+	{0xe8 , 0x02},
+	{0xe9 , 0x30},
+	{0xea , 0x04},
+	{0xeb , 0xb0},
+#else  // 60hz   8.3fps~16.6fps auto
+	{0x01 , 0x32},                                    
+	{0x02 , 0x89},                                  
+	{0x0f , 0x01},                                  
+
+
+	{0xe2 , 0x00},   //anti-flicker step [11:8]
+	{0xe3 , 0x68},   //anti-flicker step [7:0]      
+
+	{0xe4 , 0x02},
+	{0xe5 , 0x71},                                  
+	{0xe6 , 0x02},
+	{0xe7 , 0x71},                                  
+	{0xe8 , 0x04},         
+	{0xe9 , 0xe2},                                  
+	{0xea , 0x07},           
+	{0xeb , 0x53},   
 #endif
 
 #endif
@@ -466,17 +473,13 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x1c,0x49},
 	{0x1d,0x9a},
 	{0x1e,0x61},
-	{0x1f,0x16},
+	{0x1f,0x1a},//3f  2a 
 	{0x20,0xff},//ff
 	{0x21,0xf8},//fa
 	{0x22,0x57},
 	{0x24,0xa3},
 	{0x25,0x0f},
-#ifdef CONFIG_ARCH_MESON3
-	{0x26,0x01}, //03
-#else
 	{0x26,0x03}, //03
-#endif
 	{0x2f,0x01},
 	{0x30,0xf7},
 	{0x31,0x50},
@@ -484,20 +487,15 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x39,0x04},
 	{0x3a,0x20},
 	{0x3b,0x20},
-	{0x3c,0x02},
-	{0x3d,0x02}, //0x00
-	{0x3e,0x02},
-	{0x3f,0x02},
+	{0x3c,0x00},
+	{0x3d,0x00},
+	{0x3e,0x00},
+	{0x3f,0x00},
 	{0x50,0x14}, // 0x14
 	{0x53,0x80},
 	{0x54,0x87},
 	{0x55,0x87},
 	{0x56,0x80},
-
-	{0x57,0x7a},// r ratio
-	{0x58,0x7e},// g ratio
-	{0x59,0x84},//b ratio
-
 	{0x8b,0x10},
 	{0x8c,0x10},
 	{0x8d,0x10},
@@ -524,7 +522,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x6e,0x55},
 	{0x6f,0x38},
 	{0x70,0x15},
-	{0x71,0x33}, // low light startion
+	{0x71,0x33},
 	{0x72,0xdc},
 	{0x73,0x80},
 	{0x74,0x02},
@@ -536,25 +534,25 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x7a,0x81},
 	{0x7b,0x22},
 	{0x7c,0xff},
-///////CC/////
-	{0x93,0x42},  //0x48
+
+	{0x93,0x48},
 	{0x94,0x00},
-	{0x95,0x0c},//04
+	{0x95,0x04},
 	{0x96,0xe0},
 	{0x97,0x46},
 	{0x98,0xf3},
-
-	{0xb1,0x40},// startion
+	
+	{0xb1,0x40},//3c
 	{0xb2,0x40},
-	{0xb3,0x3c}, //0x40  contrast
-	{0xb5,0x00}, //
+	{0xb3,0x40}, //0x40
+	{0xb5,0x00}, //0x40
 	{0xb6,0xe0},
 	{0xbd,0x3C},
 	{0xbe,0x36},
-	{0xd0,0xCb},//c9
+	{0xd0,0xC9},//c9
 	{0xd1,0x10},
 	{0xd2,0x90},
-	{0xd3,0x50},//88
+	{0xd3,0x88},//88
 	{0xd5,0xF2},
 	{0xd6,0x10},
 	{0xdb,0x92},
@@ -567,121 +565,61 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xee,0xa0},
 	{0xef,0x40},
 	{0x80,0x03},
-	/*******************
-	{0x9F, 0x0B},//case 1   //smallest gamma curve
-	{0xA0, 0x16},
-	{0xA1, 0x29},
-	{0xA2, 0x3C},
-	{0xA3, 0x4F},
-	{0xA4, 0x5F},
-	{0xA5, 0x6F},
-	{0xA6, 0x8A},
-	{0xA7, 0x9F},
-	{0xA8, 0xB4},
-	{0xA9, 0xC6},
-	{0xAA, 0xD3},
-	{0xAB, 0xDD},
-	{0xAC, 0xE5},
-	{0xAD, 0xF1},
-	{0xAE, 0xFA},
-	{0xAF, 0xFF},
-
-
-	{0x9F, 0x0E},//	case 2
-	{0xA0, 0x1C},
-	{0xA1, 0x34},
-	{0xA2, 0x48},
-	{0xA3, 0x5A},
-	{0xA4, 0x6B},
-	{0xA5, 0x7B},
-	{0xA6, 0x95},
-	{0xA7, 0xAB},
-	{0xA8, 0xBF},
-	{0xA9, 0xCE},
-	{0xAA, 0xD9},
-	{0xAB, 0xE4},
-	{0xAC, 0xEC},
-	{0xAD, 0xF7},
-	{0xAE, 0xFD},
-	{0xAF, 0xFF},
-
-
-	{0x9F, 0x10},//		case 3:
-	{0xA0, 0x20},
-	{0xA1, 0x38},
-	{0xA2, 0x4E},
-	{0xA3, 0x63},
-	{0xA4, 0x76},
-	{0xA5, 0x87},
-	{0xA6, 0xA2},
-	{0xA7, 0xB8},
-	{0xA8, 0xCA},
-	{0xA9, 0xD8},
-	{0xAA, 0xE3},
-	{0xAB, 0xEB},
-	{0xAC, 0xF0},
-	{0xAD, 0xF8},
-	{0xAE, 0xFD},
-	{0xAF, 0xFF},
-
-
-
-	{0x9F, 0x14},//		case 4:
-	{0xA0, 0x28},
-	{0xA1, 0x44},
-	{0xA2, 0x5D},
-	{0xA3, 0x72},
-	{0xA4, 0x86},
-	{0xA5, 0x95},
-	{0xA6, 0xB1},
-	{0xA7, 0xC6},
-	{0xA8, 0xD5},
-	{0xA9, 0xE1},
-	{0xAA, 0xEA},
-	{0xAB, 0xF1},
-	{0xAC, 0xF5},
-	{0xAD, 0xFB},
-	{0xAE, 0xFE},
-	{0xAF, 0xFF},
-
-
-	{0x9F, 0x15},//	case 5:	 largest gamma curve
-	{0xA0, 0x2A},
-	{0xA1, 0x4A},
-	{0xA2, 0x67},
-	{0xA3, 0x79},
-	{0xA4, 0x8C},
-	{0xA5, 0x9A},
-	{0xA6, 0xB3},
-	{0xA7, 0xC5},
-	{0xA8, 0xD5},
-	{0xA9, 0xDF},
-	{0xAA, 0xE8},
-	{0xAB, 0xEE},
-	{0xAC, 0xF3},
-	{0xAD, 0xFA},
-	{0xAE, 0xFD},
-	{0xAF, 0xFF},
-	********************/
-
-	{0x9F, 0x10},//		case 3:
-	{0xA0, 0x20},
-	{0xA1, 0x38},
-	{0xA2, 0x4E},
-	{0xA3, 0x63},
-	{0xA4, 0x76},
-	{0xA5, 0x87},
-	{0xA6, 0xA2},
-	{0xA7, 0xB8},
-	{0xA8, 0xCA},
-	{0xA9, 0xD8},
-	{0xAA, 0xE3},
-	{0xAB, 0xEB},
-	{0xAC, 0xF0},
-	{0xAD, 0xF8},
-	{0xAE, 0xFD},
-	{0xAF, 0xFF},
-
+#if 0
+	{0x9F,0x0E},
+	{0xA0,0x1C},
+	{0xA1,0x34},
+	{0xA2,0x48},
+	{0xA3,0x5A},
+	{0xA4,0x6B},
+	{0xA5,0x7B},
+	{0xA6,0x95},
+	{0xA7,0xAB},
+	{0xA8,0xBF},
+	{0xA9,0xCE},
+	{0xAA,0xD9},
+	{0xAB,0xE4},
+	{0xAC,0xEC},
+	{0xAD,0xF7},
+	{0xAE,0xFD},
+	{0xAF,0xFF},
+#elif 0
+	{0x9F,0x10},
+	{0xA0,0x20},
+	{0xA1,0x38},
+	{0xA2,0x4e},
+	{0xA3,0x63},
+	{0xA4,0x76},
+	{0xA5,0x87},
+	{0xA6,0xa2},
+	{0xA7,0xb8},
+	{0xA8,0xca},
+	{0xA9,0xd8},
+	{0xAA,0xe3},
+	{0xAB,0xEb},
+	{0xAC,0xf0},
+	{0xAD,0xF8},
+	{0xAE,0xFD},
+	{0xAF,0xFF},
+#else
+	{0x9F,0x14},
+	{0xA0,0x28},
+	{0xA1,0x44},
+	{0xA2,0x5d},
+	{0xA3,0x72},
+	{0xA4,0x86},
+	{0xA5,0x95},
+	{0xA6,0xb1},
+	{0xA7,0xc6},
+	{0xA8,0xd5},
+	{0xA9,0xe1},
+	{0xAA,0xea},
+	{0xAB,0xf1},
+	{0xAC,0xf5},
+	{0xAD,0xFb},
+	{0xAE,0xFe},
+	{0xAF,0xFF},
+#endif
 	{0xc0,0x00},
 	{0xc1,0x14},
 	{0xc2,0x21},
@@ -725,9 +663,6 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x19,0x55},
 	{0x1a,0xd8},
 	{0x1b,0xf5},
-
-	{0x1c,0x60}, //r gain limit
-
 	{0x70,0x40},
 	{0x71,0x58},
 	{0x72,0x30},
@@ -760,71 +695,6 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x45,0xD6},
 	{0x46,0xEE},
 	{0x47,0x0d},
-	{0xfe , 0x00},// update
-
-	{0x10 , 0x26},
-	{0x11 , 0x0d},  // fd,modified by mormo 2010/07/06
-	{0x1a , 0x2a},  // 1e,modified by mormo 2010/07/06
-
-	{0x1c , 0x49}, // c1,modified by mormo 2010/07/06
-	{0x1d , 0x9a}, // 08,modified by mormo 2010/07/06
-	{0x1e , 0x61}, // 60,modified by mormo 2010/07/06
-
-	{0x3a , 0x20},
-
-	{0x50 , 0x14},  // 10,modified by mormo 2010/07/06
-	{0x53 , 0x80},
-	{0x56 , 0x80},
-
-	{0x8b , 0x20}, //LSC
-	{0x8c , 0x20},
-	{0x8d , 0x20},
-	{0x8e , 0x14},
-	{0x8f , 0x10},
-	{0x90 , 0x14},
-
-	{0x94 , 0x02},
-	{0x95 , 0x0c}, //0x07
-	{0x96 , 0xe0},
-
-	{0xb1 , 0x40}, // YCPT
-	{0xb2 , 0x40},
-	{0xb3 , 0x3c},
-	{0xb6 , 0xe0},
-
-	{0xd0 , 0xcb}, // AECT  c9,modifed by mormo 2010/07/06
-	{0xd3 , 0x50}, // 80,modified by mormor 2010/07/06   58
-
-	{0xf2 , 0x02},
-	{0xf7 , 0x12},
-	{0xf8 , 0x0a},
-	//Registers of Page1
-	{0xfe , 0x01},
-
-	{0x02 , 0x20},
-	{0x04 , 0x10},
-	{0x05 , 0x08},
-	{0x06 , 0x20},
-	{0x08 , 0x0a},
-
-	{0x0e , 0x44},
-	{0x0f , 0x32},
-	{0x10 , 0x41},
-	{0x11 , 0x37},
-	{0x12 , 0x22},
-	{0x13 , 0x19},
-	{0x14 , 0x44},
-	{0x15 , 0x44},
-
-	{0x19 , 0x50},
-	{0x1a , 0xd8},
-
-	{0x32 , 0x10},
-
-	{0x35 , 0x00},
-	{0x36 , 0x80},
-	{0x37 , 0x00},
-	//-----------Update the registers end---------//
 	{0xfe,0x00},
 	{0xfe,0x00},
 	{0xff,0xff},
@@ -841,40 +711,67 @@ void GC0308_init_regs(struct gc0308_device *dev)
     {
         buf[0] = GC0308_script[i].addr;//(unsigned char)((GC0308_script[i].addr >> 8) & 0xff);
         //buf[1] = (unsigned char)(GC0308_script[i].addr & 0xff);
-        buf[1] = GC0308_script[i].val;
-        if(GC0308_script[i].val==0xff&&GC0308_script[i].addr==0xff){
-            printk("GC0308_write_regs success in initial GC0308.\n");
-            break;
-        }
-        if((i2c_put_byte_add8(client,buf, 2)) < 0){
-            printk("fail in initial GC0308. \n");
-            return;
-        }
-        i++;
+	    buf[1] = GC0308_script[i].val;
+		i++;
+	 if (GC0308_script[i].val==0xff&&GC0308_script[i].addr==0xff)
+	 	{
+ 	    	printk("GC0308_write_regs success in initial GC0308.\n");
+	 	break;
+	 	}
+        if((i2c_put_byte_add8(client,buf, 2)) < 0)
+        	{
+    	    	printk("fail in initial GC0308. \n");
+		return;
+        	}
     }
     aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
     if (plat_dat&&plat_dat->custom_init_script) {
-        i=0;
-        aml_camera_i2c_fig1_t*  custom_script = (aml_camera_i2c_fig1_t*)plat_dat->custom_init_script;
-        while(1)
-        {
-            buf[0] = custom_script[i].addr;
-            buf[1] = custom_script[i].val;
-            if (custom_script[i].val==0xff&&custom_script[i].addr==0xff){
-                printk("GC0308_write_custom_regs success in initial GC0308.\n");
-                break;
-            }
-            if((i2c_put_byte_add8(client,buf, 2)) < 0){
-                printk("fail in initial GC0308 custom_regs. \n");
-                return;
-            }
-            i++;
-        }
+		i=0;
+		aml_camera_i2c_fig1_t*  custom_script = (aml_camera_i2c_fig1_t*)plat_dat->custom_init_script;
+		while(1)
+		{
+			buf[0] = custom_script[i].addr;
+			buf[1] = custom_script[i].val;
+			if (custom_script[i].val==0xff&&custom_script[i].addr==0xff)
+			{
+				printk("GC0308_write_custom_regs success in initial GC0308.\n");
+				break;
+			}
+			if((i2c_put_byte_add8(client,buf, 2)) < 0)
+			{
+				printk("fail in initial GC0308 custom_regs. \n");
+				return;
+			}
+			i++;
+		}
     }
     return;
 
 }
 
+/*void GC0308_init_regs(struct gc0308_device *dev)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+    int i=0;
+
+    while(1)
+    {
+        if (GC0308_script[i].val==0xff&&GC0308_script[i].addr==0xff)
+        {
+        	//printk("GT2005_write_regs success in initial GT2005.\n");
+        	break;
+        }
+        if((i2c_put_byte(client,GC0308_script[i].addr, GC0308_script[i].val)) < 0)
+        {
+        	printk("fail in initial GC0308. \n");
+		break;
+		}
+		i++;
+    }
+
+    return;
+}
+*/
 #endif
 
 /*************************************************************************
@@ -905,7 +802,7 @@ void set_GC0308_param_wb(struct gc0308_device *dev,enum  camera_wb_flip_e para)
 	buf[0]=0x22;
 	temp_reg=i2c_get_byte_add8(client,buf);
 
-	printk(" camera set_GC0308_param_wb=%d. \n ",para);
+
 	switch (para)
 	{
 		case CAM_WB_AUTO:
@@ -1032,7 +929,6 @@ void GC0308_night_mode(struct gc0308_device *dev,enum  camera_night_mode_flip_e 
 	//temp_reg=gc0308_read_byte(0x22);
 	buf[0]=0x20;
 	temp_reg=i2c_get_byte_add8(client,buf);
-	temp_reg=0xff;
 
     if(enable)
     {
@@ -1100,85 +996,89 @@ void GC0308_night_mode(struct gc0308_device *dev,enum  camera_night_mode_flip_e 
 void GC0308_set_param_banding(struct gc0308_device *dev,enum  camera_night_mode_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-    unsigned char buf[4];
-    switch(banding){
-        case CAM_BANDING_60HZ:
-            buf[0]=0x01;
-            buf[1]=0x32;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0x02;
-            buf[1]=0x70;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0x0f;
-            buf[1]=0x01;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe3;
-            buf[1]=0x64;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe4;
-            buf[1]=0x02;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe5;
-            buf[1]=0x58;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe6;
-            buf[1]=0x03;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe7;
-            buf[1]=0x84;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe8;
-            buf[1]=0x04;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe9;
-            buf[1]=0xb0;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xea;
-            buf[1]=0x05;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xeb;
-            buf[1]=0xdc;
-            i2c_put_byte_add8(client,buf,2);
-            break;
-        case CAM_BANDING_50HZ:
-            buf[0]=0x01;
-            buf[1]=0x32;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0x02;
-            buf[1]=0x70;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0x0f;
-            buf[1]=0x01;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe3;
-            buf[1]=0x78;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe4;
-            buf[1]=0x02;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe5;
-            buf[1]=0x58;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe6;
-            buf[1]=0x03;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe7;
-            buf[1]=0x48;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe8;
-            buf[1]=0x04;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xe9;
-            buf[1]=0xb0;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xea;
-            buf[1]=0x05;
-            i2c_put_byte_add8(client,buf,2);
-            buf[0]=0xeb;
-            buf[1]=0xa0;
-            i2c_put_byte_add8(client,buf,2);
-            break;
-    }
+	unsigned char buf[4];
+
+	switch(banding)
+		{
+		case CAM_BANDING_60HZ:
+			buf[0]=0x01;
+			buf[1]=0x66;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x02;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x0f;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe3;
+			buf[1]=0x43;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe4;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe5;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe6;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe7;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe8;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe9;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xea;
+			buf[1]=0x04;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xeb;
+			buf[1]=0xb6;
+			i2c_put_byte_add8(client,buf,2);
+			break;
+		case CAM_BANDING_50HZ:
+			buf[0]=0x01;
+			buf[1]=0x6a;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x02;
+			buf[1]=0x48;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x0f;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe3;
+			buf[1]=0x50;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe4;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe5;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe6;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe7;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe8;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe9;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xea;
+			buf[1]=0x04;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xeb;
+			buf[1]=0xb0;
+			i2c_put_byte_add8(client,buf,2);
+			break;
+
+		}
+
 }
 
 
@@ -1211,61 +1111,61 @@ void set_GC0308_param_exposure(struct gc0308_device *dev,enum camera_exposure_e 
 			buf1[0]=0xb5;
 			buf1[1]=0xc0;
 			buf2[0]=0xd3;
-			buf2[1]=0x30;
+			buf2[1]=0x60;
 			break;
 		case EXPOSURE_N3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xd0;
 			buf2[0]=0xd3;
-			buf2[1]=0x38;
+			buf2[1]=0x68;
 			break;
 		case EXPOSURE_N2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xe0;
 			buf2[0]=0xd3;
-			buf2[1]=0x40;
+			buf2[1]=0x70;
 			break;
 		case EXPOSURE_N1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xf0;
 			buf2[0]=0xd3;
-			buf2[1]=0x48;
+			buf2[1]=0x78;
 			break;
 		case EXPOSURE_0_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0x08;//00
+			buf1[1]=0x00;//48
 			buf2[0]=0xd3;
-			buf2[1]=0x50;//6a
+			buf2[1]=0x88;//6a
 			break;
 		case EXPOSURE_P1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x10;
 			buf2[0]=0xd3;
-			buf2[1]=0x5c;
+			buf2[1]=0x88;
 			break;
 		case EXPOSURE_P2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x20;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x90;
 			break;
 		case EXPOSURE_P3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x30;
 			buf2[0]=0xd3;
-			buf2[1]=0x68;
+			buf2[1]=0x98;
 			break;
 		case EXPOSURE_P4_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x40;
 			buf2[0]=0xd3;
-			buf2[1]=0x70;
+			buf2[1]=0xa0;
 			break;
 		default:
 			buf1[0]=0xb5;
 			buf1[1]=0x00;
 			buf2[0]=0xd3;
-			buf2[1]=0x50;
+			buf2[1]=0x88;
 			break;
 	}
 	//msleep(300);
@@ -1316,7 +1216,7 @@ void set_GC0308_param_effect(struct gc0308_device *dev,enum camera_effect_flip_e
 		    buf[1]=0x54;
 		    i2c_put_byte_add8(client,buf,2);
 			buf[0]=0xb3;
-		    buf[1]=0x3c;
+		    buf[1]=0x40;
 		    i2c_put_byte_add8(client,buf,2);
 			buf[0]=0xb4;
 		    buf[1]=0x80;
@@ -1500,7 +1400,6 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 	unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
-#if 0
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_gc0308(value));
 		ret=i2c_put_byte(client,0x0201,v4l_2_gc0308(value));
@@ -1511,6 +1410,11 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 	case V4L2_CID_SATURATION:
 		ret=i2c_put_byte(client,0x0202, value);
 		break;
+#if 0
+	case V4L2_CID_EXPOSURE:
+		ret=i2c_put_byte(client,0x0201, value);
+		break;
+#endif
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		ret=i2c_get_byte(client,0x0101);
 		if(ret>0) {
@@ -1538,41 +1442,33 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;
-#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
-		if(gc0308_qctrl[0].default_value!=value){
+        if(gc0308_qctrl[0].default_value!=value){
 			gc0308_qctrl[0].default_value=value;
 			set_GC0308_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
-		}
+        	}
 		break;
 	case V4L2_CID_EXPOSURE:
-		if(gc0308_qctrl[1].default_value!=value){
+        if(gc0308_qctrl[1].default_value!=value){
 			gc0308_qctrl[1].default_value=value;
 			set_GC0308_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
-		}
+        	}
 		break;
 	case V4L2_CID_COLORFX:
-		if(gc0308_qctrl[2].default_value!=value){
+        if(gc0308_qctrl[2].default_value!=value){
 			gc0308_qctrl[2].default_value=value;
 			set_GC0308_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
-		}
+        	}
 		break;
 	case V4L2_CID_WHITENESS:
-		if(gc0308_qctrl[3].default_value!=value){
+		 if(gc0308_qctrl[3].default_value!=value){
 			gc0308_qctrl[3].default_value=value;
 			GC0308_set_param_banding(dev,value);
 			printk(KERN_INFO " set camera  banding=%d. \n ",value);
-		}
-		break;
-	case V4L2_CID_BLUE_BALANCE:
-		if(gc0308_qctrl[4].default_value!=value){
-			gc0308_qctrl[4].default_value=value;
-			GC0308_night_mode(dev,value);
-			printk(KERN_INFO " set camera  scene mode=%d. \n ",value);
-		}
+        	}
 		break;
 	default:
 		ret=-1;
@@ -1584,16 +1480,7 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 
 static void power_down_gc0308(struct gc0308_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
-	buf[0]=0x1a;
-	buf[1]=0x17;
-	i2c_put_byte_add8(client,buf,2);
-	buf[0]=0x25;
-	buf[1]=0x00;
-	i2c_put_byte_add8(client,buf,2);
-	
-	msleep(5);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	return;
 }
 
@@ -2035,8 +1922,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.fmt_info.frame_rate = 150;
 	para.fmt_info.h_active = 640;
 	para.fmt_info.v_active = 480;
-	para.fmt_info.hsync_phase = 0;
-	para.fmt_info.vsync_phase  = 1;	
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
     start_tvin_service(0,&para);
@@ -2198,14 +2083,12 @@ static int gc0308_open(struct file *file)
 	struct gc0308_device *dev = video_drvdata(file);
 	struct gc0308_fh *fh = NULL;
 	int retval = 0;
-	gc0308_have_open=1;
-	gl_vm_skip_count=0;
 	if(dev->platform_dev_data.device_init) {
 		dev->platform_dev_data.device_init();
 		printk("+++found a init function, and run it..\n");
 	}
 	GC0308_init_regs(dev);
-	msleep(100);//40
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {
@@ -2292,7 +2175,6 @@ static int gc0308_close(struct file *file)
 	struct gc0308_device *dev       = fh->dev;
 	struct gc0308_dmaqueue *vidq = &dev->vidq;
 	struct video_device  *vdev = video_devdata(file);
-	gc0308_have_open=0;
 
 	gc0308_stop_thread(vidq);
 	videobuf_stop(&fh->vb_vidq);
@@ -2314,9 +2196,8 @@ static int gc0308_close(struct file *file)
 	gc0308_qctrl[1].default_value=4;
 	gc0308_qctrl[2].default_value=0;
 	gc0308_qctrl[3].default_value=0;
-	gc0308_qctrl[4].default_value=0;
 
-	//power_down_gc0308(dev);
+	power_down_gc0308(dev);
 #endif
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
@@ -2414,36 +2295,16 @@ static void aml_gc0308_early_suspend(struct early_suspend *h)
 		}
 	}
 }
-static struct i2c_client *this_client;
 
 static void aml_gc0308_late_resume(struct early_suspend *h)
 {
-	aml_plat_cam_data_t* plat_dat;
-	if(gc0308_have_open==0){
-		printk("enter -----> %s \n",__FUNCTION__);
-		if(h && h->param) {
-			plat_dat= (aml_plat_cam_data_t*)h->param;
-			if (plat_dat && plat_dat->late_resume) {
-				plat_dat->late_resume();
-			}
+	printk("enter -----> %s \n",__FUNCTION__);
+	if(h && h->param) {
+		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
+		if (plat_dat && plat_dat->late_resume) {
+			plat_dat->late_resume();
 		}
-		/*unsigned char buf[4];	    
-		buf[0]=0x25;	    
-		buf[1]=0x00;	    
-		i2c_put_byte_add8(this_client,buf,2);		
-		buf[0]=0x1a;	    
-		buf[1]=0x17;	    
-		i2c_put_byte_add8(this_client,buf,2);*/
-		if(plat_dat->device_uninit) {
-		plat_dat->device_uninit();
-		printk("+++found a uninit function, and run it..\n");
-	    }
-		}
-	else{
-		if (plat_dat && plat_dat->device_init) {
-				plat_dat->device_init();
-			}
-		}
+	}
 }
 #endif
 
@@ -2454,6 +2315,7 @@ static int gc0308_probe(struct i2c_client *client,
 	int err;
 	struct gc0308_device *t;
 	struct v4l2_subdev *sd;
+	
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2472,10 +2334,9 @@ static int gc0308_probe(struct i2c_client *client,
 	plat_dat->device_uninit();
 	if(err<0) return  -ENODEV;
 #endif
+	
 	/* Now create a video4linux device */
 	mutex_init(&t->mutex);
-
-	/* Now create a video4linux device */
 	t->vdev = video_device_alloc();
 	if (t->vdev == NULL) {
 		kfree(t);
@@ -2486,22 +2347,15 @@ static int gc0308_probe(struct i2c_client *client,
 
 	video_set_drvdata(t->vdev, t);
 
-	this_client=client;
-
 	/* Register it */
 	if (plat_dat) {
 		t->platform_dev_data.device_init=plat_dat->device_init;
 		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
 		if(plat_dat->video_nr>=0)  video_nr=plat_dat->video_nr;
-			if(t->platform_dev_data.device_init) {
-			t->platform_dev_data.device_init();
-			printk("+++found a init function, and run it..\n");
-		    }
-			//power_down_gc0308(t);
-			if(t->platform_dev_data.device_uninit) {
-			t->platform_dev_data.device_uninit();
-			printk("+++found a uninit function, and run it..\n");
-		    }
+		//if(t->platform_dev_data.device_init) {
+		//t->platform_dev_data.device_init();
+		//printk("+++found a init function, and run it..\n");
+	//}
 	}
 	err = video_register_device(t->vdev, VFL_TYPE_GRABBER, video_nr);
 	if (err < 0) {
@@ -2552,7 +2406,7 @@ static int gc0308_resume(struct i2c_client *client)
     tvin_parm_t para;
     para.port  = TVIN_PORT_CAMERA;
     para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;
-    GC0308_init_regs(t); 
+    GC0308_init_regs(t);
 	if(fh->stream_on == 1){
         start_tvin_service(0,&para);
 	}

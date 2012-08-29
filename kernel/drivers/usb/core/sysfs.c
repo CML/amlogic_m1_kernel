@@ -231,7 +231,7 @@ show_urbnum(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR(urbnum, S_IRUGO, show_urbnum, NULL);
 
 
-#ifdef	CONFIG_PM
+#ifdef	CONFIG_PM_NOUSE
 
 static const char power_group[] = "power";
 
@@ -296,7 +296,7 @@ static void remove_persist_attributes(struct device *dev)
 
 #endif	/* CONFIG_PM */
 
-#ifdef	CONFIG_USB_SUSPEND
+#ifdef	CONFIG_USB_SUSPEND_NOUSE
 
 static ssize_t
 show_connected_duration(struct device *dev, struct device_attribute *attr,

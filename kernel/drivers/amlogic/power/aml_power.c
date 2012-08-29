@@ -462,7 +462,7 @@ static int otg_is_usb_online(void)
 	return (transceiver->state == OTG_STATE_B_PERIPHERAL);
 }
 #endif
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID
 int pc_connect(int status) 
 {
     new_usb_status = status; 
@@ -613,7 +613,7 @@ static int aml_power_probe(struct platform_device *pdev)
 		pdata->is_usb_online = otg_is_usb_online;
 	}
 #endif
-#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_G_ANDROID
     pdata->is_usb_online = gadget_is_usb_online;
 #endif
 	if (pdata->is_usb_online) {

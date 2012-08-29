@@ -30,6 +30,8 @@ on boot
 
     write /sys/power/wake_lock true
 
+    chmod 777 /sbin/toolbox
+
     class_start default
 
 service ueventd /sbin/ueventd

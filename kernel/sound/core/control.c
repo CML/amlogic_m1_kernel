@@ -1195,7 +1195,7 @@ static long snd_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	case SNDRV_CTL_IOCTL_POWER:
 		return -ENOPROTOOPT;
 	case SNDRV_CTL_IOCTL_POWER_STATE:
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NO_USE
 		return put_user(card->power_state, ip) ? -EFAULT : 0;
 #else
 		return put_user(SNDRV_CTL_POWER_D0, ip) ? -EFAULT : 0;

@@ -963,7 +963,7 @@ void usb_rebind_intf(struct usb_interface *intf)
 	}
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 
 #define DO_UNBIND	0
 #define DO_REBIND	1
@@ -1343,7 +1343,7 @@ int usb_resume(struct device *dev, pm_message_t msg)
 
 #endif /* CONFIG_PM */
 
-#ifdef CONFIG_USB_SUSPEND
+#ifdef CONFIG_USB_SUSPEND_NOUSE
 
 /**
  * usb_enable_autosuspend - allow a USB device to be autosuspended

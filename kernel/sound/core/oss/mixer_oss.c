@@ -43,6 +43,10 @@ static int snd_mixer_oss_open(struct inode *inode, struct file *file)
 	struct snd_mixer_oss_file *fmixer;
 	int err;
 
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
+
 	card = snd_lookup_oss_minor_data(iminor(inode),
 					 SNDRV_OSS_DEVICE_TYPE_MIXER);
 	if (card == NULL)
@@ -186,9 +190,10 @@ static int snd_mixer_oss_get_recsrc(struct snd_mixer_oss_file *fmixer)
 		return -EIO;
 	if (mixer->put_recsrc && mixer->get_recsrc) {	/* exclusive */
 		int err;
-		if ((err = mixer->get_recsrc(fmixer, &result)) < 0)
+		unsigned int index;
+		if ((err = mixer->get_recsrc(fmixer, &index)) < 0)
 			return err;
-		result = 1 << result;
+		result = 1 << index;
 	} else {
 		struct snd_mixer_oss_slot *pslot;
 		int chn;
@@ -210,6 +215,7 @@ static int snd_mixer_oss_set_recsrc(struct snd_mixer_oss_file *fmixer, int recsr
 	struct snd_mixer_oss *mixer = fmixer->mixer;
 	struct snd_mixer_oss_slot *pslot;
 	int chn, active;
+	unsigned int index;
 	int result = 0;
 
 	if (mixer == NULL)
@@ -218,8 +224,8 @@ static int snd_mixer_oss_set_recsrc(struct snd_mixer_oss_file *fmixer, int recsr
 		if (recsrc & ~mixer->oss_recsrc)
 			recsrc &= ~mixer->oss_recsrc;
 		mixer->put_recsrc(fmixer, ffz(~recsrc));
-		mixer->get_recsrc(fmixer, &result);
-		result = 1 << result;
+		mixer->get_recsrc(fmixer, &index);
+		result = 1 << index;
 	}
 	for (chn = 0; chn < 31; chn++) {
 		pslot = &mixer->slots[chn];
@@ -613,8 +619,10 @@ static void snd_mixer_oss_put_volume1_vol(struct snd_mixer_oss_file *fmixer,
 	if (numid == ID_UNKNOWN)
 		return;
 	down_read(&card->controls_rwsem);
-	if ((kctl = snd_ctl_find_numid(card, numid)) == NULL)
+	if ((kctl = snd_ctl_find_numid(card, numid)) == NULL) {
+		up_read(&fmixer->card->controls_rwsem);
 		return;
+	}
 	uinfo = kzalloc(sizeof(*uinfo), GFP_KERNEL);
 	uctl = kzalloc(sizeof(*uctl), GFP_KERNEL);
 	if (uinfo == NULL || uctl == NULL)

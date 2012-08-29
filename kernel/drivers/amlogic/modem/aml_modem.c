@@ -48,10 +48,9 @@ static int aml_modem_suspend(struct early_suspend *handler)
     printk("aml_modem_suspend !!!!!!!!!!!!!###################\n");
     int ret = -1;
 
-    #ifdef  CONFIG_AMLOGIC_MODEM_PM
+    #if 0    
     if(handler ) 
     {
-        printk("do aml_modem_suspend !!!!!!!!!!!!!###################\n");
         g_pData->power_off();
         g_pData->disable();
         ret = 0;
@@ -65,14 +64,15 @@ static int aml_modem_resume(struct early_suspend *handler)
 {
     printk("aml_modem_resume !!!!!!!!!!!!!###################\n");
     int ret = -1;
-    #ifdef  CONFIG_AMLOGIC_MODEM_PM
+    #if 0
     if(handler )
     {
-        printk("do aml_modem_resume !!!!!!!!!!!!!###################\n");
         g_pData->power_on();
         g_pData->enable();
         // need to reset ??
+        #if 0  
         g_pData->reset();
+        #endif
         ret = 0 ;
     }
     return ret;

@@ -351,6 +351,8 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 	for(i=0; i<aml_nftl_wl->pages_per_blk; i++){
 
 		src_page = phy_blk_node_src->phy_page_map[i];
+		if (src_page < 0)
+			continue;
 
 		dest_page = phy_blk_node_dest->last_write + 1;
 		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);

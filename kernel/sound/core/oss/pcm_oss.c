@@ -453,8 +453,10 @@ static int snd_pcm_hw_param_near(struct snd_pcm_substream *pcm,
 	} else {
 		*params = *save;
 		max = snd_pcm_hw_param_max(pcm, params, var, max, &maxdir);
-		if (max < 0)
+		if (max < 0) {
+			kfree(save);
 			return max;
+		}
 		last = 1;
 	}
  _end:
@@ -2378,6 +2380,10 @@ static int snd_pcm_oss_open(struct inode *inode, struct file *file)
 	struct snd_pcm_oss_setup setup[2];
 	int nonblock;
 	wait_queue_t wait;
+
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
 
 	pcm = snd_lookup_oss_minor_data(iminor(inode),
 					SNDRV_OSS_DEVICE_TYPE_PCM);

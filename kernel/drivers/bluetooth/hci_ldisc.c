@@ -135,7 +135,13 @@ int hci_uart_tx_wakeup(struct hci_uart *hu)
 
 restart:
 	clear_bit(HCI_UART_TX_WAKEUP, &hu->tx_state);
-
+/*added by Barry,for broadcom 4325*/
+#ifdef SUPPORTED_BCM4325  
+    BT_DBG("wakeup_bt");
+    if (NULL != bt_dev.bt_dev_resume) {
+        bt_dev.bt_dev_resume();
+    }
+#endif;
 	while ((skb = hci_uart_dequeue(hu))) {
 		int len;
 

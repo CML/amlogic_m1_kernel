@@ -1603,7 +1603,8 @@ void dwc_otg_pcd_remove(struct lm_device *_lmdev)
  *
  * @param _driver The driver being registered
  */
-int usb_gadget_register_driver(struct usb_gadget_driver *_driver)
+int usb_gadget_probe_driver(struct usb_gadget_driver *_driver,
+               int (*bind)(struct usb_gadget *))
 {
 	int retval;
 
@@ -1611,7 +1612,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *_driver)
 		    _driver->driver.name);
 
 	if (!_driver || _driver->speed == USB_SPEED_UNKNOWN ||
-	    !_driver->bind ||
+	    !bind ||
 	    !_driver->unbind || !_driver->disconnect || !_driver->setup) {
 		DWC_DEBUGPL(DBG_PCDV, "EINVAL\n");
 		return -EINVAL;
@@ -1630,7 +1631,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *_driver)
 	s_pcd->gadget.dev.driver = &_driver->driver;
 
 	DWC_DEBUGPL(DBG_PCD, "bind to driver %s\n", _driver->driver.name);
-	retval = _driver->bind(&s_pcd->gadget);
+	retval = bind(&s_pcd->gadget);
 	if (retval) {
 		DWC_ERROR("bind to driver %s --> error %d\n",
 			  _driver->driver.name, retval);
@@ -1638,13 +1639,13 @@ int usb_gadget_register_driver(struct usb_gadget_driver *_driver)
 		s_pcd->gadget.dev.driver = 0;
 		return retval;
 	}
-	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
+	//dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
 	DWC_DEBUGPL(DBG_ANY, "registered gadget driver '%s'\n",
 		    _driver->driver.name);
 	return 0;
 }
 
-EXPORT_SYMBOL(usb_gadget_register_driver);
+EXPORT_SYMBOL(usb_gadget_probe_driver);
 
 /**
  * This function unregisters a gadget driver

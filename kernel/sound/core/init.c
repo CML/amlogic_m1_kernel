@@ -213,7 +213,7 @@ int snd_card_create(int idx, const char *xid,
 	init_waitqueue_head(&card->shutdown_sleep);
 #ifdef CONFIG_PM
 	mutex_init(&card->power_lock);
-	init_waitqueue_head(&card->power_sleep);
+	//init_waitqueue_head(&card->power_sleep);
 #endif
 	/* the control interface cannot be accessed from the user space until */
 	/* snd_cards_bitmask and snd_cards are set with snd_card_register */

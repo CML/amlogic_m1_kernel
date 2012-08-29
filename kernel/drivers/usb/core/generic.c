@@ -190,7 +190,7 @@ static void generic_disconnect(struct usb_device *udev)
 		usb_set_configuration(udev, -1);
 }
 
-#ifdef	CONFIG_PM
+#ifdef	CONFIG_PM_NOUSE
 
 static int generic_suspend(struct usb_device *udev, pm_message_t msg)
 {
@@ -235,7 +235,7 @@ struct usb_device_driver usb_generic_driver = {
 	.name =	"usb",
 	.probe = generic_probe,
 	.disconnect = generic_disconnect,
-#ifdef	CONFIG_PM
+#ifdef	CONFIG_PM_NOUSE
 	.suspend = generic_suspend,
 	.resume = generic_resume,
 #endif

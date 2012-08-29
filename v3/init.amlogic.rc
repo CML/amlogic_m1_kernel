@@ -1,0 +1,466 @@
+import /init.amlogic.usb.rc
+
+on early-init
+    start ueventd
+    symlink /initlogo.rle.bak /initlogo.rle
+    write /sys/class/graphics/fb0/blank 0
+    write /sys/class/graphics/fb1/blank 1
+        
+    #Mount-points
+    export EXTERNAL_STORAGE /mnt/sdcard
+    export SECONDARY_STORAGE /mnt/sd-ext
+    export EXTERNAL_STORAGE2 /mnt/sd-ext
+    export INTERNAL_STORAGE /mnt/sdcard
+
+    mkdir /mnt/sdcard 0000 system system
+    symlink /mnt/sdcard /sdcard
+
+    mkdir /mnt/sd-ext 0000 system system
+    symlink /mnt/sd-ext /sd-ext
+
+    mkdir /mnt/usb 0000 system system
+
+    write /sys/class/graphics/fb0/blank 0
+    write /sys/class/graphics/fb1/blank 1
+    write /sys/class/display/mode panel
+    chmod 666 /dev/graphics/fb0
+    chmod 666 /dev/graphics/fb1
+
+    # Allow system to modify cpufreq control files
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 400000
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_min_granularity_ns 2000000
+    write /proc/sys/kernel/sched_shares_ratelimit 725000
+    write /proc/sys/kernel/sched_compat_yield 1
+    write /proc/sys/kernel/sched_child_runs_first 0
+
+    # Tweak background writeout
+    write /proc/sys/vm/dirty_expire_centisecs 200
+    write /proc/sys/vm/dirty_background_ratio  5
+
+    # SD optimizations
+    write /sys/devices/virtual/bdi/250:8/read_ahead_kb 2048
+    write /sys/devices/virtual/bdi/253:0/read_ahead_kb 2048
+
+    # G-Sensors
+    mkdir /data/misc/sensors 0777 system system
+    chmod 0666 /dev/mmc31xx
+    chmod 0666 /dev/mxc622x
+    chmod 0666 /dev/mmc328x
+    chmod 0666 /dev/ecompass_ctrl
+    chmod 0666 /dev/mpu
+    chmod 0666 /dev/mpuirq
+    chmod 0666 /dev/timerirq
+
+on post-fs-data
+	
+    # For 3G Dongle
+    mount usbfs none /proc/bus/usb
+
+	# Give system access to wpa_supplicant.conf for backup and restore
+    mkdir /data/misc/wifi 0770 wifi wifi
+    mkdir /data/misc/wifi/sockets 0770 wifi wifi
+    chmod 0770 /data/misc/wifi
+    chmod 0660 /data/misc/wifi/wpa_supplicant.conf
+    chown wifi wifi /data/misc/wifi
+    chown wifi wifi /data/misc/wifi/sockets
+    chown wifi wifi /data/misc/wifi/wpa_supplicant.conf
+    mkdir /data/local 0771 shell shell
+    mkdir /data/local/tmp 0771 shell shell
+    mkdir /data/data 0771 system system
+    mkdir /data/app-private 0771 system system
+    mkdir /data/app 0771 system system
+    mkdir /data/property 0700 root root
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chown dhcp dhcp /data/misc/dhcp
+	chmod 0770 /data/misc/dhcp
+
+    # GPS com and pesudo com ports
+    symlink /dev/ttyS1 /dev/ttyS10
+
+    chown system system /sys/devices/system/clocksource/clocksource0/current_clocksource
+	    
+    # Pixcir touch
+    chmod 0666 /dev/pixcir_i2c_ts0
+
+    # Bluetooth
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    chmod 0777 /system/bin/hciattach_usi
+    chown system system /sys/class/rfkill/rfkill0/state
+    chmod 0664 /sys/class/rfkill/rfkill0/state
+    write /sys/class/rfkill/rfkill0/state 0
+
+    # Bluetooth MAC address programming
+    chown bluetooth bluetooth /sys/class/efuse/mac_bt
+    setprop ro.bt.bdaddr_path /sys/class/efuse/mac_bt
+    symlink /sys/class/efuse/mac_bt /system/etc/bt_addr.conf
+
+    setprop vold.post_fs_data_done 1
+
+    chown system system /sys/class/android_usb/android0/f_mass_storage/lun0/file
+    chmod 0666 /sys/class/android_usb/android0/f_mass_storage/lun0/file
+    chown system system /sys/class/android_usb/android0/f_mass_storage/lun1/file
+    chmod 0666 /sys/class/android_usb/android0/f_mass_storage/lun1/file
+
+    #optimize system performance
+    chown system system /sys/devices/system/clocksource/clocksource0/current_clocksource
+
+on boot
+	setprop wifi.interface eth0
+    # Create dhcpcd dir
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chmod 0770 /data/misc/dhcp
+
+    mount debugfs /sys/kernel/debug /sys/kernel/debug
+
+    # Define for Alsa
+    setprop alsa.mixer.capture.master Digital
+    setprop alsa.mixer.capture.headset Digital
+    setprop alsa.mixer.capture.earpiece Digital
+
+on fs
+    #kernel modules
+    insmod /system/lib/modules/ump.ko ump_debug_level=0
+    insmod /system/lib/modules/mali.ko mali_debug_level=0
+    insmod /system/lib/modules/cifs.ko
+    insmod /system/lib/modules/tun.ko
+
+    # Make /system/etc/firmware writable for easier upgrade/install
+    mkdir /system/etc/firmware
+    chmod 0777 /system/etc/firmware
+
+    # For display serial number
+    chmod 0777 /sys/class/efuse/userdata
+
+    chmod 0666 /sys/class/graphics/fb0/blank
+    chmod 0666 /sys/class/graphics/fb1/blank
+    chmod 0666 /sys/class/graphics/fb0/enable_key
+    chmod 0666 /sys/class/graphics/fb0/enable_key_onhold
+
+    chmod 0666 /sys/class/ppmgr/angle
+
+    chmod 0666 /dev/amstream_sub_read
+
+    # HDMI/LCD switch
+    chmod 0666 /sys/class/amhdmitx/amhdmitx0/disp_cap
+    chmod 0666 /sys/class/amhdmitx/amhdmitx0/disp_mode
+    chmod 0666 /sys/class/display/axis
+    chmod 0666 /sys/class/display/mode
+    chmod 0666 /sys/class/display2/axis
+    chmod 0666 /sys/class/display2/mode
+    chmod 0666 /sys/class/graphics/fb0/blank
+    chmod 0666 /sys/class/ppmgr/ppscaler
+    chmod 0666 /sys/class/ppmgr/ppscaler_rect
+    chmod 0666 /sys/class/video/axis
+    chmod 0666 /sys/class/video/disable_video
+    chmod 0666 /sys/class/video2/axis
+    chmod 0666 /sys/class/video2/disable_video
+    chmod 0666 /sys/class/video2/device_resolution
+    chmod 0666 /sys/class/video2/file_name
+    chmod 0666 /sys/class/video2/global_offset
+    chmod 0666 /sys/class/video2/blackout_policy
+    chmod 0666 /sys/class/video2/screen_mode
+    chmod 0666 /sys/class/video2/axis
+    chmod 0666 /sys/class/video2/disable_video
+    chmod 0666 /sys/class/video2/zoom
+    chmod 0666 /sys/class/video2/clone
+    chmod 0666 /sys/class/vfm/map
+    chmod 0666 /sys/module/amvideo2/parameters/clone_frame_rate
+    chmod 0666 /sys/module/amvideo2/parameters/clone_frame_rate_force
+    chmod 0666 /sys/module/amvideo2/parameters/clone_frame_scale_width
+    chmod 0666 /sys/module/amvideo2/parameters/isr_interval_max
+    chmod 0666 /sys/module/amvideo2/parameters/isr_run_time_max
+    chmod 0666 /sys/module/amvideo2/parameters/throw_frame
+    chmod 0666 /sys/module/amvideo2/parameters/vsync_hold_line
+    chown system system /sys/class/display/mode
+    chown media system /sys/class/display/axis
+    chown system system /sys/class/graphics/fb0/scale
+    chown system system /sys/class/graphics/fb1/scale
+    chown system system /sys/class/graphics/fb0/scale_axis
+    chown system system /sys/class/graphics/fb1/scale_axis
+    chown system system /sys/class/amhdmitx/amhdmitx0/disp_mode
+    chmod 0664 /sys/class/display/mode
+    chmod 0664 /sys/class/display/axis
+    chmod 0664 /sys/class/graphics/fb0/scale
+    chmod 0664 /sys/class/graphics/fb1/scale
+    chmod 0664 /sys/class/amhdmitx/amhdmitx0/disp_mode
+	chown system system /sys/class/vfm/map
+    chmod 0664 /sys/class/vfm/map
+    
+	# Dual display(needs more kernel implementation, only m3 for now)
+    #chown system system /sys/class/display2/mode
+    #chown system system /sys/class/display2/axis
+    #chown system system /sys/class/video2/clone   
+    #chown system system /sys/module/amvideo2/parameters/clone_frame_scale_width
+    #chown system system /sys/module/amvideo2/parameters/clone_frame_rate
+    #chown system system /sys/class/video2/screen_mode        
+    #chmod 0664 /sys/class/display2/mode
+    #chmod 0664 /sys/class/display2/axis
+    #chmod 0664 /sys/class/video2/clone
+    #chmod 0664 /sys/module/amvideo2/parameters/clone_frame_scale_width
+    #chmod 0664 /sys/module/amvideo2/parameters/clone_frame_rate
+    #chmod 0664 /sys/class/video2/screen_mode
+
+    # Free scale
+    chown system system /sys/class/graphics/fb0/free_scale
+    chown system system /sys/class/graphics/fb0/scale_width
+    chown system system /sys/class/graphics/fb0/scale_height
+    chown system system /sys/class/graphics/fb1/free_scale
+    chown system system /sys/class/graphics/fb1/scale_width
+    chown system system /sys/class/graphics/fb1/scale_height
+    chown system system /sys/class/graphics/fb0/request2XScale
+    chmod 0664 /sys/class/graphics/fb0/free_scale
+    chmod 0664 /sys/class/graphics/fb0/scale_width
+    chmod 0664 /sys/class/graphics/fb0/scale_height
+    chmod 0664 /sys/class/graphics/fb1/free_scale
+    chmod 0664 /sys/class/graphics/fb1/scale_width
+    chmod 0664 /sys/class/graphics/fb1/scale_height
+    chmod 0664 /sys/class/graphics/fb0/request2XScale
+
+    # AmlogicPlayer
+    chmod 0666 /sys/class/aml_clk81/clk81_freq_level
+    chmod 0666 /sys/class/amstream/amutils_cmd
+    chmod 0666 /sys/class/amstream/amutils_enable
+    chmod 0666 /sys/class/amstream/vcodec_profile
+    chmod 0666 /sys/class/astream/format
+    chmod 0666 /sys/class/audiodsp/codec_fatal_err
+    chmod 0666 /sys/class/audiodsp/codec_mips
+    chmod 0666 /sys/class/display/axis
+    chmod 0666 /sys/class/display/mode
+    chmod 0666 /sys/class/ppmgr/angle
+    chmod 0666 /sys/class/ppmgr/ppscaler
+    chmod 0666 /sys/class/ppmgr/ppscaler_rect
+    chmod 0666 /sys/class/stb/demux1_source
+    chmod 0666 /sys/class/stb/source
+    chmod 0666 /sys/class/subtitle/enable
+    chmod 0666 /sys/class/subtitle/total
+    chmod 0666 /sys/class/subtitle/width
+    chmod 0666 /sys/class/subtitle/height
+    chmod 0666 /sys/class/subtitle/type
+    chmod 0666 /sys/class/subtitle/curr
+    chmod 0666 /sys/class/subtitle/size
+    chmod 0666 /sys/class/subtitle/data
+    chmod 0666 /sys/class/subtitle/startpts
+    chmod 0666 /sys/class/subtitle/fps
+    chmod 0666 /sys/class/subtitle/subtype
+    chmod 0666 /sys/class/tsync/discontinue
+    chmod 0666 /sys/class/tsync/pts_audio
+    chmod 0666 /sys/class/tsync/pts_pcrscr
+    chmod 0666 /sys/class/tsync/pts_video
+    chmod 0666 /sys/class/tsync/pts_audio
+    chmod 0666 /sys/class/tsync/pts_pcrscr
+    chmod 0666 /sys/class/tsync/event
+    chmod 0666 /sys/class/tsync/mode
+    chmod 0666 /sys/class/tsync/enable
+    chmod 0666 /sys/class/video/device_resolution
+    chmod 0666 /sys/class/video/file_name
+    chmod 0666 /sys/class/video/global_offset
+    chmod 0666 /sys/class/video/blackout_policy
+    chmod 0666 /sys/class/video/screen_mode
+    chmod 0666 /sys/class/video/axis
+    chmod 0666 /sys/class/video/disable_video
+    chmod 0666 /sys/class/video/zoom
+
+    # Speaker mute
+    chmod 0666 /sys/devices/platform/soc-audio/codec_reg
+
+    # 3G dongle
+    chmod 0777 /dev/ttyS20
+    chmod 0777 /system/etc/init-pppd.sh
+
+    # Backlight control
+    chmod 0666 /sys/class/backlight/aml-bl/brightness
+    chown system system /sys/class/backlight/aml-bl/brightness
+
+    #Hack for Talk and skype videoconference on 1 camera systems
+    symlink /dev/video0 /dev/video1
+
+    # GPS com and pesudo com ports
+    symlink /dev/ttyS1 /dev/ttyS10
+    chmod 777 /dev/ttyS1
+    chmod 777 /dev/ttyS2
+    chmod 777 /dev/ttya0
+    chmod 777 /dev/ptya0
+    chmod 777 /dev/ttya1
+    chmod 777 /dev/ptya1
+
+    chown system system /sys/devices/system/clocksource/clocksource0/current_clocksource
+
+	# Misc
+	chmod 0777 /sys/class/powerhold/bat-off
+
+on property:init.svc.bootanim=stopped
+	# turn off modules when system booted up 
+	# set the modules witch are needed to be controled dynamically for power saveing 
+	#on property:init.svc.bootanim=stopped 
+	write /sys/class/aml_mod/mod_off audio
+	write /sys/class/aml_mod/mod_off mipi
+	write /sys/class/aml_mod/mod_off spi
+	write /sys/class/aml_mod/mod_off uart0
+	write /sys/class/aml_mod/mod_off uart1
+	write /sys/class/aml_mod/mod_off uart2
+	write /sys/class/aml_mod/mod_off uart3
+	write /sys/class/aml_mod/mod_off bt656
+	write /sys/class/aml_mod/mod_off vdec
+	write /sys/class/aml_mod/mod_off rom
+	write /sys/class/aml_mod/mod_off efuse
+	write /sys/class/aml_mod/mod_off random_num_gen
+	write /sys/class/aml_mod/mod_off tcon
+	write /sys/class/aml_mod/dynamical_control audio
+	write /sys/class/aml_mod/dynamical_control vdec
+	write /sys/class/aml_mod/dynamical_control bt656
+	write /sys/class/aml_mod/dynamical_control lvds
+
+service wpa_supplicant /system/bin/wpa_supplicant -Dwext -ieth0 -d -c /data/misc/wifi/wpa_supplicant.conf
+	class main
+	socket wpa_eth0 dgram 660 wifi wifi
+	group system wifi
+	disabled
+	oneshot
+
+service dhcpcd_eth0 /system/bin/dhcpcd -ABKL
+	class main
+	disabled
+	oneshot
+
+service iprenew_eth0 /system/bin/dhcpcd -n
+	class main
+	disabled
+	oneshot
+
+service dhcpcd_usbnet0 /system/bin/dhcpcd -d -f /system/etc/dhcpcd/dhcpcd.conf -B
+    class main
+    group dhcp system
+    disabled
+    oneshot
+
+# bugreport is triggered by holding down volume down, volume up and power
+service bugreport /system/bin/bugmailer.sh -v
+	class main
+	disabled
+	oneshot
+	keycodes 114 115 116
+
+service audio /system/bin/alsa_ctl restore
+	class core
+	group system audio
+	oneshot
+
+service memsicd /system/bin/memsicd
+    class main
+    user compass
+    oneshot
+
+service ril-daemon /system/bin/rild -l /system/lib/libaml-ril.so
+    class main
+    socket rild stream 660 root radio
+    socket rild-debug stream 660 radio system
+    user root
+    group radio cache inet misc audio sdcard_rw log
+    disabled
+
+# Set screen size
+service display /system/bin/logwrapper /system/bin/set_display_mode.sh panel
+    class core
+    oneshot
+
+service pppd_gprs /system/etc/init-pppd.sh
+    user root
+    group radio net_admin cache inet misc
+    disabled
+    oneshot
+
+service hciattach  /system/bin/logwrapper  /system/bin/hciattach_usi \
+    -n -s 115200 /dev/ttyS1 bcmbt 460800
+    user root
+    group bluetooth net_bt_admin
+    disabled
+
+service hfag /system/bin/sdptool add --channel=10 HFAG
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service hsag /system/bin/sdptool add --channel=11 HSAG
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service opush /system/bin/sdptool add --channel=12 OPUSH
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service pbap /system/bin/sdptool add --channel=19 PBAP
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service usbpm /system/bin/usbtestpm
+    disabled
+
+#zram
+service zram /system/bin/zram
+    user root
+    disabled
+    oneshot
+
+# do wififix
+service wififix /system/bin/wififix.sh
+	class main
+	group root root
+	oneshot
+	disabled
+
+# touch calibration 
+service calibration /system/bin/calibration.sh
+     oneshot
+     console
+     disabled
+
+on property:hw.nophone=true
+    stop ril-daemon
+
+on property:hw.nophone=false
+    start ril-daemon
+
+on property:dev.bootcomplete=1
+    chown media system /sys/class/vm/mirror
+    chmod 777 /dev/vdin0
+    chmod 777 /dev/ge2d
+    chmod 777 /dev/video0
+    chmod 777 /dev/video1
+    chmod 777 /dev/camera0
+    write /sys/class/vm/mirror 0
+    chmod 0666 /sys/devices/system/clocksource/clocksource0/current_clocksource
+    start calibration
+    chmod 0777 /sys/class/graphics/fb0/scale_axis
+    chmod 0777 /sys/class/graphics/fb0/request2XScale
+	
+    # patch to disable suspend P4DV3 need it for working sound after suspend
+    write /sys/power/wake_lock true
+
+    #Fix dhcp problems with wifi
+    start wififix
+
+	#zram
+	start zram
+	
+	start usbpm
+
+	symlink /sys/class/efuse/mac_bt /system/etc/bt_addr.conf

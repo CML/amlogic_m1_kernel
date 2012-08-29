@@ -66,7 +66,7 @@ static int  option_tiocmget(struct tty_struct *tty, struct file *file);
 static int  option_tiocmset(struct tty_struct *tty, struct file *file,
 				unsigned int set, unsigned int clear);
 static int  option_send_setup(struct usb_serial_port *port);
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 static int  option_suspend(struct usb_serial *serial, pm_message_t message);
 static int  option_resume(struct usb_serial *serial);
 #endif
@@ -777,7 +777,7 @@ static struct usb_driver option_driver = {
 	.name       = "option",
 	.probe      = usb_serial_probe,
 	.disconnect = usb_serial_disconnect,
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 	.suspend    = usb_serial_suspend,
 	.resume     = usb_serial_resume,
 	.supports_autosuspend =	1,
@@ -813,7 +813,7 @@ static struct usb_serial_driver option_1port_device = {
 	.disconnect        = option_disconnect,
 	.release           = option_release,
 	.read_int_callback = option_instat_callback,
-#ifdef CONFIG_PM
+#ifdef CONFIG_PMNOUSE
 	.suspend           = option_suspend,
 	.resume            = option_resume,
 #endif
@@ -1502,7 +1502,7 @@ static void option_release(struct usb_serial *serial)
 	}
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_NOUSE
 static int option_suspend(struct usb_serial *serial, pm_message_t message)
 {
 	struct option_intf_private *intfdata = serial->private;

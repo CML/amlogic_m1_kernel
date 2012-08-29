@@ -230,7 +230,7 @@ unsigned int audio_in_i2s_rd_ptr(void)
 {
 	unsigned int val;
 	val = READ_MPEG_REG(AUDIN_FIFO0_RDPTR);
-	printk("audio in i2s rd ptr: %x\n", val);
+	//printk("audio in i2s rd ptr: %x\n", val);
 	return val;
 }
 unsigned int audio_in_i2s_wr_ptr(void)
@@ -444,6 +444,7 @@ void audio_enable_ouput(int flag)
               WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 3, 1, 2);
             }
         }
+        audio_i2s_unmute();
     } else {
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 1, 2);
 
@@ -451,6 +452,7 @@ void audio_enable_ouput(int flag)
             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 0);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);
         }
+        audio_i2s_mute();
     }
     audio_out_enabled(flag);
 }
@@ -521,12 +523,12 @@ void audio_hw_958_raw()
     WRITE_MPEG_REG(AIU_958_SYNWORD2_MASK, IEC958_syncword2_mask);
     WRITE_MPEG_REG(AIU_958_SYNWORD3_MASK, IEC958_syncword3_mask);
 
-    printk("%s: %d\n", __func__, __LINE__);
-    printk("\tBPF: %x\n", IEC958_bpf);
-    printk("\tBRST: %x\n", IEC958_brst);
-    printk("\tLENGTH: %x\n", IEC958_length);
-    printk("\tPADDSIZE: %x\n", IEC958_length);
-    printk("\tsyncword: %x, %x, %x\n\n", IEC958_syncword1, IEC958_syncword2, IEC958_syncword3);
+    //printk("%s: %d\n", __func__, __LINE__);
+    //printk("\tBPF: %x\n", IEC958_bpf);
+    //printk("\tBRST: %x\n", IEC958_brst);
+    //printk("\tLENGTH: %x\n", IEC958_length);
+    //printk("\tPADDSIZE: %x\n", IEC958_length);
+    //printk("\tsyncword: %x, %x, %x\n\n", IEC958_syncword1, IEC958_syncword2, IEC958_syncword3);
     
 }
 
@@ -560,8 +562,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 7, 1);  // 8bit 
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 3, 3); // endian
         }
-        
-        printk("IEC958 RAW\n");
+        //printk("IEC958 RAW\n");
     }else if(mode == AIU_958_MODE_PCM32){
         audio_hw_set_958_pcm24(set);
         if(ENABLE_IEC958){
@@ -570,7 +571,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 7, 1);  // 16bit
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 3, 3); // endian
         }
-        printk("IEC958 PCM32 \n");
+        //printk("IEC958 PCM32 \n");
     }else if (mode == AIU_958_MODE_PCM24) {
         audio_hw_set_958_pcm24(set);
         if (ENABLE_IEC958) {
@@ -580,7 +581,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 3, 3); // endian
 
         }
-        printk("IEC958 24bit\n");
+        //printk("IEC958 24bit\n");
     } else if (mode == AIU_958_MODE_PCM16) {
         audio_hw_set_958_pcm24(set);
         if (ENABLE_IEC958) {
@@ -590,7 +591,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 3, 3); // endian
 
         }
-        printk("IEC958 16bit\n");
+        //printk("IEC958 16bit\n");
     }
 
     audio_hw_958_reset(0, 1);

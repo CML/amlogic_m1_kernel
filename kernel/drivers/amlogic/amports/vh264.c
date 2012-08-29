@@ -84,9 +84,6 @@
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
-#define DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE 0x0001
-#define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
-
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
 typedef struct {
@@ -108,6 +105,7 @@ static vframe_t *vh264_vf_peek(void*);
 static vframe_t *vh264_vf_get(void*);
 static void vh264_vf_put(vframe_t *, void*);
 static int  vh264_vf_states(vframe_states_t *states, void*);
+static int vh264_event_cb(int type, void *data, void *private_data);
 
 static void vh264_prot_init(void);
 static void vh264_local_init(void);
@@ -121,6 +119,7 @@ static const struct vframe_operations_s vh264_vf_provider = {
     .peek = vh264_vf_peek,
     .get = vh264_vf_get,
     .put = vh264_vf_put,
+    .event_cb = vh264_event_cb,
     .vf_states = vh264_vf_states,
 };
 static struct vframe_provider_s vh264_vf_prov;
@@ -141,7 +140,6 @@ static u32 buf_start, buf_size;
 static s32 buf_offset;
 static u32 pts_outside = 0;
 static u32 sync_outside = 0;
-static u32 dec_control = 0;
 static u32 vh264_ratio;
 static u32 vh264_rotation;
 
@@ -252,6 +250,31 @@ static void vh264_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
+
+static int vh264_event_cb(int type, void *data, void *private_data)
+{
+#if 0  // currently for h264, disable it
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vh264_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vh264_local_init();
+        vf_receiver = vf_receiver_bak;
+        vh264_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vh264_vf_provider);
+#endif              
+        amvdec_start();
+    }
+#endif
+    return 0;        
+}
+
 static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
@@ -277,11 +300,21 @@ static int  vh264_vf_states(vframe_states_t *states, void* op_arg)
 
 static void set_frame_info(vframe_t *vf)
 {
+    unsigned int ar = 0;
+
     vf->width = frame_width;
     vf->height = frame_height;
     vf->duration = frame_dur;
-    vf->ratio_control = (min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX)) << DISP_RATIO_ASPECT_RATIO_BIT;
     vf->orientation = vh264_rotation;
+
+    if (vh264_ratio == 0) {
+        vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
+    } else {
+        //h264_ar = ((float)frame_height/frame_width)*customer_ratio;
+        ar = min(h264_ar, (u32)DISP_RATIO_ASPECT_RATIO_MAX);
+
+        vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);
+    }
 
     return;
 }
@@ -309,7 +342,6 @@ static void vh264_isr(void)
     vframe_t *vf;
     unsigned int cpu_cmd;
     unsigned int pts, pts_valid = 0, pts_duration = 0;
-    bool force_interlaced_frame = false;
 
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -559,22 +591,13 @@ static void vh264_isr(void)
                     h264_ar = 0x100 * frame_height * 1 / (frame_width * 2);
                     break;
                 default:
-                    if (vh264_ratio>>16) {
-                        h264_ar = (frame_height * (vh264_ratio&0xffff)  *0x100 + ((vh264_ratio>>16) *  frame_width/2))/((vh264_ratio>>16) *  frame_width);
-                    } else {
-                        h264_ar = frame_height * 0x100 / frame_width;
-                    }
+                    h264_ar = frame_height * vh264_ratio / frame_width;
                     break;
                 }
             }
         } else {
             printk("v264dec: aspect_ratio not available from source\n");
-            if (vh264_ratio>>16) {
-                /* high 16 bit is width, low 16 bit is height */
-                h264_ar = ((vh264_ratio&0xffff) * frame_height* 0x100 + (vh264_ratio>>16)*frame_width/2) /( (vh264_ratio>>16) * frame_width);
-            } else {
-                h264_ar = frame_height * 0x100 / frame_width;
-            }
+            h264_ar = frame_height * vh264_ratio / frame_width;
         }
 
         WRITE_MPEG_REG(AV_SCRATCH_1, addr);
@@ -708,21 +731,7 @@ static void vh264_isr(void)
                 }
             }
 
-            if ((dec_control & DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE) &&
-                (frame_width == 1920) &&
-                (frame_height >= 1080) &&
-                (vf->duration == 3203)) {
-                force_interlaced_frame = true;
-            }
-            else if ((dec_control & DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE) &&
-                (frame_width == 720) &&
-                (frame_height == 576) &&
-                (vf->duration == 3840)) {
-                force_interlaced_frame = true;
-            }
-
-            if ((!force_interlaced_frame) &&
-                (prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME))) {
+            if (prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME)) {
                 if (pic_struct_present) {
                     if (pic_struct == PIC_TOP_BOT_TOP || pic_struct == PIC_BOT_TOP_BOT) {
                         vf->duration += vf->duration >> 1;
@@ -892,7 +901,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else
-            vf_light_unreg_provider(PROVIDER_NAME);
+            vf_light_unreg_provider(&vh264_vf_prov);
             vh264_local_init();
             vf_reg_provider(vh264_vf_prov);
 #endif
@@ -1281,8 +1290,6 @@ module_param(error_recovery_mode, uint, 0664);
 MODULE_PARM_DESC(error_recovery_mode, "\n amvdec_h264 error_recovery_mode \n");
 module_param(sync_outside, uint, 0664);
 MODULE_PARM_DESC(sync_outside, "\n amvdec_h264 sync_outside \n");
-module_param(dec_control, uint, 0664);
-MODULE_PARM_DESC(dec_control, "\n amvdec_h264 decoder control \n");
 module_init(amvdec_h264_driver_init_module);
 module_exit(amvdec_h264_driver_remove_module);
 

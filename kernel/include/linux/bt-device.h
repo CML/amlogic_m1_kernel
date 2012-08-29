@@ -10,6 +10,7 @@
 
 #ifndef __BT_DEVICE_H
 #define __BT_DEVICE_H
+#endif
 
 struct bt_dev_data {
     void (*bt_dev_init)(void);
@@ -18,5 +19,3 @@ struct bt_dev_data {
     void (*bt_dev_suspend)(void);
     void (*bt_dev_resume)(void);
 };
-
-#endif    

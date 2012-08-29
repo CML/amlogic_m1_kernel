@@ -144,8 +144,8 @@ static int aml_bl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, amlbl);
 	
 	bldev->props.power = FB_BLANK_UNBLANK;
-    if(pdata->default_bl_level_value==NULL)
-		bldev->props.brightness = 120;
+    if(!pdata->default_bl_level_value || pdata->default_bl_level_value<=0 || pdata->default_bl_level_value == NULL)
+		bldev->props.brightness = 250;
 	else
 		bldev->props.brightness=pdata->default_bl_level_value;
 

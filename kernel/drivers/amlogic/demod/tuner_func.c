@@ -362,7 +362,7 @@ int tuner_get_ch_power(struct aml_demod_i2c *adap)
 
 struct dvb_tuner_info * tuner_get_info( int type, int mode)
 {
-	/*type :  0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316, 5-RDA5880E£¬6-TDA18273*/
+	/*type :  0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316, 5-RDA5880E£¨6-TDA18273*/
 	/*mode: 0-DVBC 1-DVBT */
 	static struct dvb_tuner_info tinfo_null = {};
 

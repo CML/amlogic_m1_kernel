@@ -714,7 +714,7 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * _pcd)
 	gintsts_data_t gintsts;
 
 
-	DWC_PRINT("USB RESET\n");
+	//DWC_PRINT("USB RESET\n");
 
 	/* reset the HNP settings */
 	dwc_otg_pcd_update_otg(_pcd, 1);

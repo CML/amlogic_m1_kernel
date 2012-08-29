@@ -66,7 +66,7 @@ EXPORT_SYMBOL(aml_pcm_playback_enable);
 static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_INTERLEAVED|
 							SNDRV_PCM_INFO_BLOCK_TRANSFER|
-				  		    SNDRV_PCM_INFO_PAUSE,
+							SNDRV_PCM_INFO_PAUSE,
 				  		
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE|SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S32_LE,
 
@@ -74,34 +74,34 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 128 * 1024,
 	
-	.rate_min = 32000,
-  .rate_max = 48000,
-  .channels_min = 2,
-  .channels_max = 2,
-  .fifo_size = 0,  
+	.rate_min = 8000,
+	.rate_max = 48000,
+	.channels_min = 2,
+	.channels_max = 2,
+	.fifo_size = 0,  
 };
 
 static const struct snd_pcm_hardware aml_pcm_capture = {
 	.info			= SNDRV_PCM_INFO_INTERLEAVED|
 							SNDRV_PCM_INFO_BLOCK_TRANSFER|
 							SNDRV_PCM_INFO_MMAP |
-				  		SNDRV_PCM_INFO_MMAP_VALID |
-				  		SNDRV_PCM_INFO_PAUSE,
+							SNDRV_PCM_INFO_MMAP_VALID |
+							SNDRV_PCM_INFO_PAUSE,
 				  		
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
 	.period_bytes_min	= 64,
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 64 * 1024,
 
 	.rate_min = 8000,
-  .rate_max = 48000,
-  .channels_min = 2,
-  .channels_max = 2,
-  .fifo_size = 0,  
+	.rate_max = 48000,
+	.channels_min = 2,
+	.channels_max = 2,
+	.fifo_size = 0,  
 };
 
 /*--------------------------------------------------------------------------*\
@@ -134,13 +134,13 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->dev.dev = pcm->card->dev;
 		buf->private_data = NULL;
         /* one size for i2s output, another for 958, and 128 for alignment */
-		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+4096,
+		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+128,
 					  &buf->addr, GFP_KERNEL);
-		printk("aml-pcm %d:"
-		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
-		(void *) buf->area,
-		(void *) buf->addr,
-		size);
+		//printk("aml-pcm %d:"
+		//"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
+		//(void *) buf->area,
+		//(void *) buf->addr,
+		//size);
 
         aml_pcm_playback_start_addr = buf->area;
 		aml_pcm_playback_end_addr = buf->area + size;
@@ -153,11 +153,11 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->private_data = NULL;
 		buf->area = dma_alloc_coherent(pcm->card->dev, size*2,
 					  &buf->addr, GFP_KERNEL);
-		printk("aml-pcm %d:"
-		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
-		(void *) buf->area,
-		(void *) buf->addr,
-		size);
+		//printk("aml-pcm %d:"
+		//"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
+		//(void *) buf->area,
+		//(void *) buf->addr,
+		//size);
 
         aml_pcm_capture_start_addr = buf->area;
 		aml_pcm_capture_end_addr = buf->area+size;
@@ -241,7 +241,6 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 4096);
 		/* update the i2s hw buffer end addr as android may update that */
 		aml_pcm_playback_phy_end_addr = aml_pcm_playback_phy_start_addr+runtime->dma_bytes;
-		printk("I2S hw init,i2s mode %d\n",I2S_MODE);
 
 }
 /*
@@ -262,11 +261,11 @@ static void aml_hw_iec958_init(void)
 	if(IEC958_mode_raw == 1 && IEC958_mode_codec){
 	  if(IEC958_mode_codec == 1){ //dts, use raw sync-word mode
 	    	IEC958_MODE = AIU_958_MODE_RAW;
-		printk("iec958 mode RAW\n");
+		//printk("iec958 mode RAW\n");
 	  }	
 	  else{ //ac3,use the same pcm mode as i2s configuration
 		IEC958_MODE = AIU_958_MODE_PCM_RAW;
-		printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
+		//printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
 	  }	
 	}
 	/* case 2,3 */
@@ -277,7 +276,7 @@ static void aml_hw_iec958_init(void)
 	  	IEC958_MODE = AIU_958_MODE_PCM24;
 	  else		
 	  	IEC958_MODE = AIU_958_MODE_PCM16;
-  	  printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
+  	  //printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
     }
 
 	if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 ||
@@ -637,7 +636,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         left = to;
 		right = to + 16;
 		if (pos % align) {
-		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
+		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", pos, n, align);
 		}
 		for (j = 0; j < n; j += 64) {
 		    for (i = 0; i < 16; i++) {
@@ -656,7 +655,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         right = to + 8;
 
         if(pos % align){
-          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
         }
         for(j=0; j< n; j+= 64){
           for(i=0; i<8; i++){
@@ -676,7 +675,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         right = to + 8;
         
         if(pos % align){
-          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
         }
         for(j=0; j< n; j+= 64){
           for(i=0; i<8; i++){
@@ -749,7 +748,8 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 					t2 = (t2>>8);
 				}
 	              *to++ = (unsigned short)((t1>>8)&0xffff);
-	              *to++ = (unsigned short)((t2>>8)&0xffff);
+	              *to++ = (unsigned short)((t1>>8)&0xffff);//copy left channel to right
+	              //*to++ = (unsigned short)((t2>>8)&0xffff);
 		         }
 		         //printk("\n");
 		        left += 8;
@@ -951,7 +951,7 @@ static int read_regs(char base, int reg)
 		default:
 			break;
 	};
-	printk("\tReg %x = %x\n", reg, val);
+	//printk("\tReg %x = %x\n", reg, val);
 	return val;
 }
 
@@ -973,7 +973,7 @@ static void write_regs(char base, int reg, int val)
 		default:
 			break;
 	};
-	printk("Write reg:%x = %x\n", reg, val);
+	//printk("Write reg:%x = %x\n", reg, val);
 }
 static ssize_t regs_write_file(struct file *file,
 		const char __user *user_buf, size_t count, loff_t *ppos)

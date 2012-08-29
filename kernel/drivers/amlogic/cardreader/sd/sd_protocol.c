@@ -646,7 +646,7 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
 	#define SD_MMC_CMD_COUNT				20000//20
 	#define SD_MMC_READ_BUSY_COUNT		2000000//20
 	#define SD_MMC_WRITE_BUSY_COUNT		50000000//500000
-	#define SD_MMC_WAIT_STOP_COUNT		50000000
+	#define SD_MMC_WAIT_STOP_COUNT		100000000
 	#define SD_MMC_RETRY_COUNT			2
     
     if(cmd_send_reg->cmd_send_data)
@@ -4254,7 +4254,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 	    if(switch_funtion_status->Max_Current_Consumption == 0)
 		    return SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
 
-	    if(!(switch_funtion_status->Function_Group[5]>>8 && 0x03))
+	    if(!((switch_funtion_status->Function_Group[5]>>8) & 0x02))
 	    {	
 		    return SD_ERROR_NO_FUNCTION_SWITCH;
 	    }
@@ -4266,20 +4266,20 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 			    return ret;
 
 		    switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
-		    if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 == 0xF)
+		    if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 != 0x01)
 			    return SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
 
 			sdio_config = 0;
 			config_reg = (void *)&sdio_config;
 			sdio_config = READ_CBUS_REG(SDIO_CONFIG);
-			config_reg->cmd_clk_divide = 3;//aml_system_clk / (2*SD_MMC_TRANSFER_HIGHSPEED_CLK) -1;
+			config_reg->cmd_clk_divide = 1;//aml_system_clk / (2*SD_MMC_TRANSFER_HIGHSPEED_CLK) -1;
 			WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
 
 			sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_HIGHSPEED_CLK;
             sd_mmc_info->speed_class = HIGH_SPEED;		
 	    }
 	}
-    else if(sd_mmc_info->mmc_spec_version == SPEC_VERSION_40_41 && sd_mmc_info->card_type == CARD_TYPE_MMC)
+    else if(sd_mmc_info->mmc_spec_version == SPEC_VERSION_40_41)
     {
     	sd_delay_ms(2);	  
     	 

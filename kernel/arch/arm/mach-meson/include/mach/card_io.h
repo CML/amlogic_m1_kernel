@@ -46,7 +46,9 @@ typedef enum _SDIO_Pad_Type
 	SDIO_GPIOA_0_5,
 	SDIO_GPIOA_9_14,
 	SDIO_GPIOB_2_7,
-	SDIO_GPIOE_6_11
+	SDIO_GPIOE_6_11,
+	SDIO_B_CARD_0_5,
+	SDXC_CARD_0_5	//SDXC-B
 } SDIO_Pad_Type_t;
 
 typedef enum _Card_Work_Mode

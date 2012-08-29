@@ -9,6 +9,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/device.h>
+#include <linux/wakelock.h>
 #include "cardreader.h"
 
 #define card_get_drvdata(c)		dev_get_drvdata(&(c)->dev)
@@ -72,6 +73,10 @@ struct memory_card {
 	struct aml_card_info *card_plat_info;
 	void				 *card_info;
 
+#ifdef CONFIG_PM
+	struct wake_lock card_wakelock;
+#endif 
+
 	u8					card_status;
 	u8					unit_state;
 	u8					card_slot_mode;
@@ -86,9 +91,10 @@ struct memory_card {
 
 struct card_queue {
 	struct memory_card		*card;
+	struct task_struct	*thread;
 	//struct completion	thread_complete;
 	//wait_queue_head_t	thread_wq;
-	//struct semaphore	thread_sem;
+	struct semaphore	thread_sem;
 	unsigned int		flags;
 	struct request		*req;
 	int			(*prep_fn)(struct card_queue *, struct request *);
@@ -253,4 +259,5 @@ extern int card_schedule_work(struct work_struct *work);
 extern int card_schedule_delayed_work(struct delayed_work *work, unsigned long delay);
 extern void card_release_host(struct card_host *host);
 
+extern void sd_io_init(struct memory_card *card);
 #endif

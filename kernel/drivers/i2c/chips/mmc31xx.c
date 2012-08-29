@@ -42,8 +42,8 @@
 #define MAX_FAILURE_COUNT	3
 
 #define MMC31XX_DELAY_TM	10	/* ms */
-#define MMC31XX_DELAY_SET	1	/* ms */
-#define MMC31XX_DELAY_RST	1	/* ms */
+#define MMC31XX_DELAY_SET	10	/* ms */
+#define MMC31XX_DELAY_RST	10	/* ms */
 #define MMC31XX_DELAY_STDN	1	/* ms */
 
 #define MMC31XX_RETRY_COUNT	3
@@ -104,7 +104,8 @@ static int mmc31xx_i2c_tx_data(char *buf, int len)
 		if (i2c_transfer(this_client->adapter, msg, 1) >= 0) {
 			break;
 		}
-		mdelay(10);
+		pr_err("%s: retry\n",__FUNCTION__);
+		//mdelay(10);
 	}
 
 	if (i >= MMC31XX_RETRY_COUNT) {

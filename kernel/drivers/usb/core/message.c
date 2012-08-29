@@ -134,9 +134,7 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u16 size, int timeout)
 {
 	struct usb_ctrlrequest *dr;
-	void * buff = NULL;
-	void * p = data;
-	int ret = -ENOMEM;
+	int ret;
 
 	dr = kmalloc(sizeof(struct usb_ctrlrequest), GFP_NOIO);
 	if (!dr)
@@ -150,25 +148,8 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 
 	/* dbg("usb_control_msg"); */
 
-	/* Workaround for dwc_otg DMA address alignment */
-	if( (unsigned int)data & (L1_CACHE_BYTES - 1) ){
-		buff = kmalloc(size,GFP_NOIO);
-		if(!buff)
-			goto out;
-		p = buff;
-		if(!(requesttype & USB_DIR_IN))
-			memcpy(p,data,size);
-	}
+	ret = usb_internal_control_msg(dev, pipe, dr, data, size, timeout);
 
-	ret = usb_internal_control_msg(dev, pipe, dr, p, size, timeout);
-
-	if(buff){
-		if(requesttype & USB_DIR_IN)
-			memcpy(data,p,size);
-		kfree(buff);
-	}
-
-out:
 	kfree(dr);
 
 	return ret;
@@ -1130,7 +1111,7 @@ void usb_disable_endpoint(struct usb_device *dev, unsigned int epaddr,
 	} else {
 		ep = dev->ep_in[epnum];
 		if (reset_hardware)
-			pep = &dev->ep_in[epnum];
+			pep = &dev->ep_out[epnum];
 	}
 	if (ep) {
 		ep->enabled = 0;
@@ -1891,75 +1872,66 @@ free_interfaces:
 			/* HSOTG Electrical Test */
 			dev_warn(&dev->dev, "VID from HSOTG Electrical Test Fixture\n");
 
-			if (dev->bus && dev->parent) {
-				struct usb_device *hdev = dev->parent;
-				__u16 index = 0;
-				int timeout;
-				unsigned int pipe = usb_sndctrlpipe(hdev, 0);
+			if (dev->bus && dev->bus->root_hub) {
+				struct usb_device *hdev = dev->bus->root_hub;
 				dev_warn(&dev->dev, "Got PID 0x%x\n", dev->descriptor.idProduct);
-
-				if(hdev != dev->bus->root_hub)
-					index = dev->portnum;
 
 				switch (dev->descriptor.idProduct) {
 				case 0x0101:	/* TEST_SE0_NAK */
 					dev_warn(&dev->dev, "TEST_SE0_NAK\n");
-					index |= 0x300;
-					timeout = HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x300, NULL, 0, HZ);
 					break;
 
 				case 0x0102:	/* TEST_J */
 					dev_warn(&dev->dev, "TEST_J\n");
-					index |= 0x100;
-					timeout = HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x100, NULL, 0, HZ);
 					break;
 
 				case 0x0103:	/* TEST_K */
 					dev_warn(&dev->dev, "TEST_K\n");
-					index |= 0x200;
-					timeout = HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x200, NULL, 0, HZ);
 					break;
 
 				case 0x0104:	/* TEST_PACKET */
 					dev_warn(&dev->dev, "TEST_PACKET\n");
-					index |= 0x400;
-					timeout = HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x400, NULL, 0, HZ);
 					break;
 
 				case 0x0105:	/* TEST_FORCE_ENABLE */
 					dev_warn(&dev->dev, "TEST_FORCE_ENABLE\n");
-					index |= 0x500;
-					timeout = HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x500, NULL, 0, HZ);
 					break;
 
 				case 0x0106:	/* HS_HOST_PORT_SUSPEND_RESUME */
 					dev_warn(&dev->dev, "HS_HOST_PORT_SUSPEND_RESUME\n");
-					index |= 0x600;
-					timeout = 40 * HZ;
 					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
 							USB_REQ_SET_FEATURE, USB_RT_PORT,
-							USB_PORT_FEAT_TEST, index|0x600, NULL, 0, 40 * HZ);
+							USB_PORT_FEAT_TEST, 0x600, NULL, 0, 40 * HZ);
 					break;
 
 				case 0x0107:	/* SINGLE_STEP_GET_DEVICE_DESCRIPTOR setup */
 					dev_warn(&dev->dev, "SINGLE_STEP_GET_DEVICE_DESCRIPTOR setup\n");
-					index |= 0x700;
-					timeout = 40 * HZ;
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+							USB_REQ_SET_FEATURE, USB_RT_PORT,
+							USB_PORT_FEAT_TEST, 0x700, NULL, 0, 40 * HZ);
 					break;
 
 				case 0x0108:	/* SINGLE_STEP_GET_DEVICE_DESCRIPTOR execute */
 					dev_warn(&dev->dev, "SINGLE_STEP_GET_DEVICE_DESCRIPTOR execute\n");
-					index |= 0x800;
-					timeout = 40 * HZ;
-
-				default:
-					dev_warn(&dev->dev, "error PID %X\n",dev->descriptor.idProduct);
-					return 0;
-				}
-
-				usb_control_msg(hdev, pipe,
+					usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
 							USB_REQ_SET_FEATURE, USB_RT_PORT,
-							USB_PORT_FEAT_TEST, index, NULL, 0, timeout);
+							USB_PORT_FEAT_TEST, 0x800, NULL, 0, 40 * HZ);
+				}
 				return 0;
 			}
 		}

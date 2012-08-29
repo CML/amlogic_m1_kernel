@@ -29,7 +29,6 @@
 #define NFC_OFF_DL            ((NAND_DL  -NAND_CMD)<<2)
 #define NFC_OFF_DH            ((NAND_DH  -NAND_CMD)<<2)
 
-#define PER_INFO_BYTE		  sizeof(int)
 /*
    Common Nand Read Flow
 */
@@ -104,14 +103,6 @@
 #define NAND_ECC_BCH16            (0x7<<14)
 #define NAND_ECC_BCH24            (0x4<<14)
 
-#define NAND_ECC_BCH8_1K          (0x2)
-#define NAND_ECC_BCH16_1K         (0x3)
-#define NAND_ECC_BCH24_1K         (0x4)
-#define NAND_ECC_BCH30_1K 		  (0x5)
-#define NAND_ECC_BCH40_1K 		  (0x6)
-#define NAND_ECC_BCH60_1K 		  (0x7)
-#define NAND_ECC_BCH_SHORT		  (0x8)
-
 /**
     Cmd FIFO control
 */
@@ -181,19 +172,11 @@ typedef unsigned  t_ecc_mode;
 #define AML_BADBLK_POS					0
 #define NAND_ECC_UNIT_SIZE				512
 #define NAND_ECC_UNIT_1KSIZE			1024
-#define NAND_ECC_UNIT_SHORT			    384
-
 #define NAND_BCH9_ECC_SIZE				15
 #define NAND_BCH8_ECC_SIZE				14
 #define NAND_BCH12_ECC_SIZE				20
 #define NAND_BCH16_ECC_SIZE				26
 #define NAND_BCH24_ECC_SIZE				40
-#define NAND_BCH8_1K_ECC_SIZE			14
-#define NAND_BCH16_1K_ECC_SIZE			28
-#define NAND_BCH24_1K_ECC_SIZE			42
-#define NAND_BCH30_1K_ECC_SIZE			54
-#define NAND_BCH40_1K_ECC_SIZE			70
-#define NAND_BCH60_1K_ECC_SIZE			106
 
 #define NAND_ECC_OPTIONS_MASK			0x0000000f
 #define NAND_PLANE_OPTIONS_MASK			0x000000f0
@@ -206,12 +189,6 @@ typedef unsigned  t_ecc_mode;
 #define NAND_ECC_BCH12_MODE				0x00000003
 #define NAND_ECC_BCH16_MODE				0x00000004
 #define NAND_ECC_BCH24_MODE				0x00000005
-#define NAND_ECC_BCH8_1K_MODE			0x00000006
-#define NAND_ECC_BCH16_1K_MODE			0x00000007
-#define NAND_ECC_BCH24_1K_MODE			0x00000008
-#define NAND_ECC_BCH30_1K_MODE			0x00000009
-#define NAND_ECC_BCH40_1K_MODE			0x0000000a
-#define NAND_ECC_BCH60_1K_MODE			0x0000000b
 #define NAND_TWO_PLANE_MODE				0x00000010
 #define NAND_TIMING_MODE0				0x00000000
 #define NAND_TIMING_MODE1				0x00000100
@@ -247,22 +224,6 @@ typedef unsigned  t_ecc_mode;
 
 #define NAND_STATUS_READY_MULTI			0x20
 
-#define NAND_BLOCK_GOOD					0
-#define NAND_BLOCK_BAD					1
-#define NAND_MINI_PART_SIZE				0x800000
-#define NAND_MINI_PART_NUM				4
-#define MAX_BAD_BLK_NUM					2000
-#define MAX_MTD_PART_NUM				16
-#define MAX_MTD_PART_NAME_LEN			24
-#define ENV_NAND_MAGIC					"envx"
-#define BBT_HEAD_MAGIC					"bbts"
-#define BBT_TAIL_MAGIC					"bbte"
-#define MTD_PART_MAGIC					"anpt"
-
-#define CONFIG_ENV_SIZE         		0x2000
-#define ENV_SIZE (CONFIG_ENV_SIZE - (sizeof(uint32_t)))
-#define NAND_SYS_PART_SIZE				0x10000000
-
 struct aml_nand_flash_dev {
 	char *name;
 	u8 id[MAX_ID_LEN];
@@ -275,65 +236,6 @@ struct aml_nand_flash_dev {
 	unsigned T_RHOH;
 	u8 onfi_mode;
 	unsigned options;
-};
-
-struct aml_nand_part_info {
-	char mtd_part_magic[4];
-	char mtd_part_name[MAX_MTD_PART_NAME_LEN];
-	uint64_t size;
-	uint64_t offset;
-	u_int32_t mask_flags;
-};
-
-struct aml_nand_bbt_info {
-	char bbt_head_magic[4];
-	int16_t nand_bbt[MAX_BAD_BLK_NUM];
-	struct aml_nand_part_info aml_nand_part[MAX_MTD_PART_NUM];
-	char bbt_tail_magic[4];
-};
-
-struct env_valid_node_t {
-	int16_t  ec;
-	int16_t	phy_blk_addr;
-	int16_t	phy_page_addr;
-	int timestamp;
-};
-
-struct env_free_node_t {
-	int16_t  ec;
-	int16_t	phy_blk_addr;
-	int dirty_flag;
-	struct env_free_node_t *next;
-};
-
-struct env_oobinfo_t {
-	char name[4];
-    int16_t  ec;
-    unsigned        timestamp: 15;
-    unsigned       status_page: 1;
-};
-
-struct aml_nandenv_info_t {
-	struct mtd_info *mtd;
-	struct env_valid_node_t *env_valid_node;
-	struct env_free_node_t *env_free_node;
-	u_char env_valid;
-	u_char env_init;
-	u_char part_num_before_sys;
-	struct aml_nand_bbt_info nand_bbt_info;
-};
-
-typedef	struct environment_s {
-	uint32_t	crc;		/* CRC32 over data bytes	*/
-	unsigned char	data[ENV_SIZE]; /* Environment data		*/
-} env_t;
-
-struct aml_nand_bch_desc{
-    char * name;
-    unsigned bch_mode;
-    unsigned bch_unit_size;
-    unsigned bch_bytes;
-    unsigned user_byte_mode;
 };
 
 struct aml_nand_chip {
@@ -358,7 +260,6 @@ struct aml_nand_chip {
 	u8 user_byte_mode;
 	u8 ops_mode;
 	u8 cached_prog_status;
-	u8 max_bch_mode;
 	unsigned chip_enable[MAX_CHIP_NUM];
 	unsigned rb_enable[MAX_CHIP_NUM];
 	unsigned chip_selected;
@@ -369,12 +270,9 @@ struct aml_nand_chip {
 	dma_addr_t data_dma_addr;
 	unsigned int *user_info_buf;
 	dma_addr_t nand_info_dma_addr;
-	int8_t *block_status;
 
 	struct mtd_info			mtd;
 	struct nand_chip		chip;
-	struct aml_nandenv_info_t *aml_nandenv_info;
-	struct aml_nand_bch_desc 	*bch_desc;
 
 	/* platform info */
 	struct aml_nand_platform	*platform;
@@ -383,7 +281,6 @@ struct aml_nand_chip {
 	struct device			*device;
 
 	struct early_suspend nand_early_suspend;
-    struct class      cls;
 
 	//plateform operation function
 	void	(*aml_nand_hw_init)(struct aml_nand_chip *aml_chip);

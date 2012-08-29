@@ -89,13 +89,14 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
-#define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
-
 static vframe_t *vmpeg_vf_peek(void*);
 static vframe_t *vmpeg_vf_get(void*);
 static void vmpeg_vf_put(vframe_t *, void*);
 static int  vmpeg_vf_states(vframe_states_t *states, void*);
+static int vmpeg_event_cb(int type, void *data, void *private_data);
 
+static void vmpeg12_prot_init(void);
+static void vmpeg12_local_init(void);
 
 static const char vmpeg12_dec_id[] = "vmpeg12-dev";
 #define PROVIDER_NAME   "decoder.mpeg12"
@@ -104,6 +105,7 @@ static const struct vframe_operations_s vmpeg_vf_provider =
     .peek = vmpeg_vf_peek,
     .get  = vmpeg_vf_get,
     .put  = vmpeg_vf_put,
+    .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
 static struct vframe_provider_s vmpeg_vf_prov;
@@ -124,7 +126,6 @@ static struct vframe_s *vfp_pool_display[VF_POOL_SIZE+1];
 static struct vframe_s *vfp_pool_recycle[VF_POOL_SIZE+1];
 static vfq_t newframe_q, display_q, recycle_q;
 
-static u32 dec_control = 0;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
 static u32 stat;
@@ -133,7 +134,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 /* for error handling */
 static s32 frame_force_skip_flag = 0;
-static s32 error_frame_skip_level = 0;
+static s32 error_frame_skip_level = 2;
 
 static inline u32 index2canvas(u32 index)
 {
@@ -230,13 +231,6 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             frame_prog = info & PICINFO_PROG;
         }
 
-        if ((dec_control & DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE) &&
-            (frame_width == 720) &&
-            (frame_height == 576) &&
-            (frame_dur == 3840)) {
-            frame_prog = 0;
-        }
-
         if (frame_prog & PICINFO_PROG) {
             u32 index = ((reg & 7) - 1) & 3;
 
@@ -324,7 +318,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             } else {
                 vfq_push(&display_q, vf);
                 vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
-            }            
+            }
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -346,6 +340,26 @@ static vframe_t *vmpeg_vf_get(void* op_arg)
 static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     vfq_push(&recycle_q, vf);
+}
+
+static int vmpeg_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vmpeg_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vmpeg12_local_init();
+        vmpeg12_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vmpeg_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
@@ -676,8 +690,6 @@ static void __exit amvdec_mpeg12_driver_remove_module(void)
 
 module_param(stat, uint, 0664);
 MODULE_PARM_DESC(stat, "\n amvdec_mpeg12 stat \n");
-module_param(dec_control, uint, 0664);
-MODULE_PARM_DESC(dec_control, "\n amvmpeg12 decoder control \n");
 
 module_init(amvdec_mpeg12_driver_init_module);
 module_exit(amvdec_mpeg12_driver_remove_module);
