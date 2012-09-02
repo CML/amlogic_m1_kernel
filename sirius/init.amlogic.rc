@@ -44,6 +44,7 @@ on early-init
     write /proc/sys/kernel/sched_shares_ratelimit 725000
     write /proc/sys/kernel/sched_compat_yield 1
     write /proc/sys/kernel/sched_child_runs_first 0
+	write /sys/kernel/mm/ksm/run 1
 
     # Tweak background writeout
     write /proc/sys/vm/dirty_expire_centisecs 200

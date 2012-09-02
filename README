@@ -12,3 +12,9 @@ Defconfigs (copy it to .config before compile):
 
 Sample of make with CodeSourcery:
 make uImage -j9 ARCH=arm CROSS_COMPILE=/home/cml/CodeSourcery/Sourcery_G++_Lite/bin/arm-none-linux-gnueabi-
+
+Sample of make with Linaro:
+make uImage -j9 ARCH=arm CROSS_COMPILE=/home/cml/linaro_toolchain/bin/arm-linux-gnueabi-
+
+Latest Working Linaro Toolchain:
+https://launchpad.net/linaro-toolchain-binaries/trunk/2012.04/+download/gcc-linaro-arm-linux-gnueabi-2012.04-20120426_linux.tar.bz2

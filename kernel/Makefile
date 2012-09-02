@@ -348,10 +348,11 @@ KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security -Wunused-but-set-variable \
+		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-		   -ffast-math -fsingle-precision-constant -pipe -mtune=cortex-a9 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp -mno-unaligned-access \
-		   --param l2-cache-size=512 --param l1-cache-size=64 --param simultaneous-prefetches=8
+		   -ffast-math -fsingle-precision-constant -pipe -mtune=cortex-a9 -mfpu=neon -ftree-vectorize -mfloat-abi=softfp \
+		   --param l2-cache-size=512 --param l1-cache-size=64 --param simultaneous-prefetches=8 -mno-unaligned-access
+
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)

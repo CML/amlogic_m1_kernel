@@ -104,8 +104,7 @@ static int mmc31xx_i2c_tx_data(char *buf, int len)
 		if (i2c_transfer(this_client->adapter, msg, 1) >= 0) {
 			break;
 		}
-		pr_err("%s: retry\n",__FUNCTION__);
-		//mdelay(10);
+		mdelay(10);
 	}
 
 	if (i >= MMC31XX_RETRY_COUNT) {

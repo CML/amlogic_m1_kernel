@@ -70,7 +70,7 @@
 #include "quota.h"
 #include "refcounttree.h"
 #include "suballoc.h"
-
+#include <linux/cleancache.h>
 #include "buffer_head_io.h"
 
 static struct kmem_cache *ocfs2_inode_cachep = NULL;
@@ -2233,7 +2233,7 @@ static int ocfs2_initialize_super(struct super_block *sb,
 		mlog_errno(status);
 		goto bail;
 	}
-
+	cleancache_init_shared_fs((char *)&uuid_net_key, sb);
 bail:
 	mlog_exit(status);
 	return status;

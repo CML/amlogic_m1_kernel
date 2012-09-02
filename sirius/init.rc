@@ -154,20 +154,16 @@ on post-fs-data
     mkdir /data/misc/keychain 0771 system system
     mkdir /data/misc/vpn 0770 system vpn
     mkdir /data/misc/systemkeys 0700 system system
-    # Give system access to wpa_supplicant.conf for backup and restore
+    # give system access to wpa_supplicant.conf for backup and restore
     mkdir /data/misc/wifi 0770 wifi wifi
-    mkdir /data/misc/wifi/sockets 0770 wifi wifi
-    chmod 0770 /data/misc/wifi
     chmod 0660 /data/misc/wifi/wpa_supplicant.conf
-    chown wifi wifi /data/misc/wifi
-    chown wifi wifi /data/misc/wifi/sockets
-    chown wifi wifi /data/misc/wifi/wpa_supplicant.conf
-    mkdir /data/local 0771 shell shell
+    mkdir /data/local 0751 root root
     mkdir /data/local/tmp 0771 shell shell
     mkdir /data/data 0771 system system
     mkdir /data/app-private 0771 system system
     mkdir /data/app 0771 system system
     mkdir /data/property 0700 root root
+    mkdir /data/radio 0770 radio radio
 
     # create dalvik-cache and double-check the perms, so as to enforce our permissions
     mkdir /data/dalvik-cache 0771 system system
@@ -366,7 +362,7 @@ on property:sys.usb.config=accessory,adb
 # when changing the default configuration
 on property:persist.sys.usb.config=*
     setprop sys.usb.config $persist.sys.usb.config
-class_start default
+    class_start default
 
 ## Daemon processes to be run by init.
 ##

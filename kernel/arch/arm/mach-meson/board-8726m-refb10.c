@@ -1972,6 +1972,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
 	},
 #endif
+
 #ifdef CONFIG_SENSORS_MMC31XX
     {
         I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
